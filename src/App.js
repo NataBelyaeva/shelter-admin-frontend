@@ -5,21 +5,20 @@ import "./App.css";
 
 const App = () => {
   // --- Состояние для питомцев ---
-  // ИЗМЕНЕНИЕ: Начальное состояние теперь - пустой массив.
+  // Начальное состояние - пустой массив.
   const [items, setItems] = useState([]);
   
   const [newItem, setNewItem] = useState({
     name: "", gender: "Мальчик", age: "", description: "",
-    // ИЗМЕНЕНИЕ: Убрали 'additional', 'litterTrained', добавили 'health' и 'tray' чтобы соответствовать API
     health: "", sterilized: false, tray: false, 
-    // ИЗМЕНЕНИЕ: Photo теперь будет хранить сам файл, а не URL. Начинаем с null.
+    // Photo теперь хранит сам файл. Начинаем с null.
     photo: null 
   });
   const [showItemDetails, setShowItemDetails] = useState(null);
   const [showNewForm, setShowNewForm] = useState(false);
   const [showAll, setShowAll] = useState(false);
 
-  // --- Состояние для галереи и контактов (остается без изменений) ---
+  // --- Состояние для галереи и контактов ---
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [images, setImages] = useState([
     { url: "https://placedog.net/500/400", title: "Собака", description: "Описание собаки" },
@@ -28,10 +27,10 @@ const App = () => {
   const [newImage, setNewImage] = useState({ url: "", title: "", description: "" });
   const [contacts, setContacts] = useState({ phone: "8-800-555-35-35", requisites: "ИНН 1234567890" });
   
-  // ИЗМЕНЕНИЕ: URL нашего API
+  // URL нашего API
   const API_URL = 'http://localhost:8080/api/pets';
 
-  // ИЗМЕНЕНИЕ: Функция для загрузки питомцев с сервера
+  // Функция для загрузки питомцев с сервера
   const loadPets = () => {
     fetch(API_URL)
       .then(response => response.json())
@@ -46,13 +45,13 @@ const App = () => {
       .catch(error => console.error("Ошибка при загрузке питомцев:", error));
   };
   
-  // ИЗМЕНЕНИЕ: Используем useEffect для загрузки данных при первом рендере компонента
+  // Используем useEffect для загрузки данных при первом рендере компонента
   useEffect(() => {
     loadPets();
   }, []);
 
 
-  // ИЗМЕНЕНИЕ: Функция добавления питомца теперь отправляет данные на сервер
+  // Функция добавления питомца теперь отправляет данные на сервер
   const addItem = () => {
     // Создаем FormData для отправки файла и данных
     const formData = new FormData();
@@ -89,7 +88,7 @@ const App = () => {
     setNewItem({ ...newItem, [name]: type === "checkbox" ? checked : value });
   };
   
-  // ИЗМЕНЕНИЕ: Загрузка изображения теперь сохраняет сам файл, а не data URL
+  // Загрузка изображения теперь сохраняет сам файл, а не data URL
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -97,7 +96,7 @@ const App = () => {
     }
   };
 
-  // ИЗМЕНЕНИЕ: Функция удаления теперь работает по ID и отправляет запрос на сервер
+  // Функция удаления теперь работает по ID и отправляет запрос на сервер
   const removeItem = (id) => {
     fetch(`${API_URL}/${id}`, {
       method: 'DELETE',
@@ -112,7 +111,7 @@ const App = () => {
 
   const visibleItems = showAll ? items : items.slice(0, 7);
 
-  // --- Carousel and Contact handlers (остаются без изменений) ---
+  // --- Carousel and Contact handlers ---
   const next = () => setCarouselIndex((carouselIndex + 1) % images.length);
   const prev = () => setCarouselIndex((carouselIndex - 1 + images.length) % images.length);
   const handleNewCarouselImageInput = (e) => { /* ... */ };
@@ -127,14 +126,14 @@ const App = () => {
         <h2 className="section-title">Наши питомцы</h2>
         <div className="pets-grid">
           <AddPetCard onClick={() => setShowNewForm(true)} />
-          {visibleItems.map((item) => ( // ИЗМЕНЕНИЕ: убрали index
+          {visibleItems.map((item) => ( // убрали index
             <PetCard
-              key={item.id} // ИЗМЕНЕНИЕ: Используем уникальный id из базы данных
+              key={item.id} // Используем уникальный id из базы данных
               item={item}
-              onCardClick={() => setShowItemDetails(item)} // ИЗМЕНЕНИЕ: Передаем весь объект
+              onCardClick={() => setShowItemDetails(item)} // Передаем весь объект
               onRemoveClick={(e) => {
                 e.stopPropagation();
-                removeItem(item.id); // ИЗМЕНЕНИЕ: Удаляем по id
+                removeItem(item.id); // Удаляем по id
               }}
             />
           ))}
@@ -159,7 +158,7 @@ const App = () => {
       
       <Contacts contacts={contacts} setContacts={setContacts} />
 
-      {/* ИЗМЕНЕНИЕ: Логика отображения модального окна стала проще */ }
+      {/* Логика отображения модального окна стала проще */ }
       {showItemDetails && (
         <PetDetailsModal
           item={showItemDetails}
@@ -258,7 +257,7 @@ const PetDetailsModal = ({ item, onClose }) => (
         <p><strong>Пол:</strong> {item.gender}</p>
         <p><strong>Возраст:</strong> {item.age}</p>
         <p><strong>Описание:</strong> {item.description}</p>
-        {/* ИЗМЕНЕНИЕ: Поля, чтобы соответствовать API */}
+        {/* Поля, чтобы соответствовать API */}
         <p><strong>Здоровье:</strong> {item.health}</p>
         <div className="pet-options">
           <p><strong>Стерилизован:</strong> {item.sterilized ? "Да" : "Нет"}</p>
@@ -269,7 +268,7 @@ const PetDetailsModal = ({ item, onClose }) => (
   </div>
 );
 
-// ИЗМЕНЕНИЕ: Форма добавления, чтобы соответствовать модели данных
+// Форма добавления, чтобы соответствовать модели данных
 const AddPetFormModal = ({ newItem, onInputChange, onImageUpload, onAdd, onClose }) => (
     <div className="modal-overlay">
       <div className="modal-content">
