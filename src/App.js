@@ -286,8 +286,8 @@ const AddPetFormModal = ({ newItem, onInputChange, onImageUpload, onAdd, onClose
             <label><input type="radio" name="gender" value="Девочка" checked={newItem.gender === "Девочка"} onChange={onInputChange} /> Девочка</label>
           </div>
           <input name="age" placeholder="Возраст (например, 2 года)" value={newItem.age} onChange={onInputChange} className="form-input" />
-          <input name="description" placeholder="Главная черта характера" value={newItem.description} onChange={onInputChange} className="form-input" />
-          <textarea name="health" placeholder="Состояние здоровья" value={newItem.health} onChange={onInputChange} className="form-textarea" />
+          <input name="description" placeholder="Состояние здоровья" value={newItem.description} onChange={onInputChange} className="form-input" />
+          <textarea name="health" placeholder="Описание черт характера" value={newItem.health} onChange={onInputChange} className="form-textarea" />
           <div className="checkbox-group">
             <label><input type="checkbox" name="sterilized" checked={newItem.sterilized} onChange={onInputChange} /> Стерилизован</label>
             <label><input type="checkbox" name="tray" checked={newItem.tray} onChange={onInputChange} /> Приучен к лотку</label>
