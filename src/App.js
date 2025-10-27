@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from "react";
-// ИЗМЕНЕНИЕ: Добавили иконку FaTrash
 import { FaTimes, FaPlus, FaArrowLeft, FaArrowRight, FaTrash } from "react-icons/fa";
 import "./App.css";
 
 // --- API Configuration ---
 const BASE_API_URL = 'http://localhost:8080';
 const PETS_API_URL = `${BASE_API_URL}/api/pets`;
-const EVENTS_API_URL = `${BASE_API_URL}/api/events`; // API для мероприятий
+const EVENTS_API_URL = `${BASE_API_URL}/api/events`;
 
 // Главный компонент приложения
 const App = () => {
@@ -15,8 +14,8 @@ const App = () => {
     const [newItem, setNewItem] = useState({
         name: "", gender: "Мальчик", age: "", description: "",
         health: "", sterilized: false, tray: false, 
-        photoFile: null, // Файл для отправки
-        photoPreviewUrl: null // URL для локального предпросмотра
+        photoFile: null, 
+        photoPreviewUrl: null 
     });
     const [showItemDetails, setShowItemDetails] = useState(null);
     const [showNewForm, setShowNewForm] = useState(false);
@@ -24,21 +23,22 @@ const App = () => {
 
     // --- Состояние для мероприятий (Галерея) ---
     const [carouselIndex, setCarouselIndex] = useState(0);
-    const [images, setImages] = useState([]); // ИЗМЕНЕНИЕ: Будет загружено из БД
+    const [images, setImages] = useState([]); 
+    const [showEventDetails, setShowEventDetails] = useState(null); // НОВОЕ: Для редактирования мероприятия
     
-    // НОВОЕ: Состояние для добавления мероприятия через модалку
+    // Состояние для добавления мероприятия через модалку
     const [newEvent, setNewEvent] = useState({ 
         title: "", 
         description: "", 
-        imageFile: null // File object for upload
+        imageFile: null 
     });
-    const [showNewEventForm, setShowNewEventForm] = useState(false); // Для модалки
+    const [showNewEventForm, setShowNewEventForm] = useState(false);
     
     // --- Состояние для контактов ---
     const [contacts, setContacts] = useState({ phone: "8-800-555-35-35", requisites: "ИНН 1234567890" });
     
     // ====================================================================
-    // === CRUD Функции для ПИТОМЦЕВ (Без изменений, кроме URL) ==========
+    // === CRUD Функции для ПИТОМЦЕВ ======================================
     // ====================================================================
 
     // 1. (Read) Загрузка питомцев с сервера
@@ -48,7 +48,6 @@ const App = () => {
             .then(data => {
                 const petsWithFullPhotoPath = data.map(pet => ({
                     ...pet,
-                    // ИЗМЕНЕНИЕ: Используем BASE_API_URL
                     photo: pet.photo ? `${BASE_API_URL}${pet.photo}` : 'https://placedog.net/300/200' 
                 }));
                 setItems(petsWithFullPhotoPath.reverse());
@@ -67,7 +66,6 @@ const App = () => {
         formData.append('sterilized', newItem.sterilized);
         formData.append('tray', newItem.tray);
         
-        // ИЗМЕНЕНИЕ: Используем photoFile
         if (newItem.photoFile) { 
             formData.append('photo', newItem.photoFile);
         }
@@ -140,7 +138,7 @@ const App = () => {
             setNewItem(prev => ({ 
                 ...prev, 
                 photoFile: file, 
-                photoPreviewUrl: URL.createObjectURL(file) // Для локального предпросмотра
+                photoPreviewUrl: URL.createObjectURL(file) 
             }));
         }
     };
@@ -160,7 +158,8 @@ const App = () => {
                     title: event.title,
                     description: event.description,
                 }));
-                setImages(eventsData.reverse());
+                // Мероприятия приходят от новых к старым, сохраняем порядок
+                setImages(eventsData); 
                 if (eventsData.length > 0) setCarouselIndex(0);
             })
             .catch(error => console.error("Ошибка при загрузке мероприятий:", error));
@@ -169,7 +168,7 @@ const App = () => {
     // 2. (Create) Добавление нового мероприятия
     const addEvent = () => {
         if (!newEvent.title || !newEvent.imageFile) {
-            alert("Заголовок и фото мероприятия обязательны!");
+            alert("Заголовок, фото и описание мероприятия обязательны!");
             return;
         }
 
@@ -194,7 +193,29 @@ const App = () => {
         });
     };
     
-    // 3. (Delete) Удаление мероприятия
+    // 3. (Update) Обновление мероприятия (НОВАЯ ФУНКЦИЯ)
+    const updateEvent = (id, updatedData, imageFile) => {
+        const formData = new FormData();
+        formData.append('title', updatedData.title);
+        formData.append('description', updatedData.description);
+        
+        if (imageFile) {
+            formData.append('image', imageFile);
+        }
+
+        fetch(`${EVENTS_API_URL}/${id}`, {
+            method: 'PUT',
+            body: formData,
+        })
+        .then(res => res.json())
+        .then(() => {
+            setShowEventDetails(null); 
+            loadEvents(); 
+        })
+        .catch(error => console.error("Ошибка при обновлении мероприятия:", error));
+    };
+    
+    // 4. (Delete) Удаление мероприятия
     const removeEvent = (id) => {
         if (!window.confirm("Вы уверены, что хотите удалить это мероприятие?")) return;
 
@@ -232,7 +253,7 @@ const App = () => {
     // --- useEffect (обновление) ---
     useEffect(() => {
         loadPets();
-        loadEvents(); // ДОБАВЛЕНО
+        loadEvents(); 
     }, []);
 
     const visibleItems = showAll ? items : items.slice(0, 7);
@@ -277,13 +298,14 @@ const App = () => {
                 onNext={next}
                 onPrev={prev}
                 onRemove={removeImageFromCarousel} 
-                onAddClick={() => setShowNewEventForm(true)} // НОВОЕ: Открытие модалки
+                onEdit={(event) => setShowEventDetails(event)} // НОВОЕ: для открытия модалки редактирования
+                onAddClick={() => setShowNewEventForm(true)}
             />
             
             {/* Секция Контакты */}
             <Contacts contacts={contacts} setContacts={setContacts} />
 
-            {/* Модальное окно РЕДАКТИРОВАНИЯ ПИТОМЦА (остается) */}
+            {/* Модальное окно РЕДАКТИРОВАНИЯ ПИТОМЦА */}
             {showItemDetails && (
                 <PetDetailsModal
                     item={showItemDetails}
@@ -297,7 +319,7 @@ const App = () => {
                 />
             )}
 
-            {/* Модальное окно ДОБАВЛЕНИЯ ПИТОМЦА (обновлен для предпросмотра) */}
+            {/* Модальное окно ДОБАВЛЕНИЯ ПИТОМЦА */}
             {showNewForm && (
                 <AddPetFormModal
                     newItem={newItem}
@@ -309,7 +331,7 @@ const App = () => {
                 />
             )}
 
-            {/* НОВОЕ: Модальное окно ДОБАВЛЕНИЯ МЕРОПРИЯТИЯ */}
+            {/* Модальное окно ДОБАВЛЕНИЯ МЕРОПРИЯТИЯ */}
             {showNewEventForm && (
                 <AddEventFormModal
                     newEvent={newEvent}
@@ -320,11 +342,26 @@ const App = () => {
                     onClose={() => setShowNewEventForm(false)}
                 />
             )}
+            
+            {/* НОВОЕ: Модальное окно РЕДАКТИРОВАНИЯ МЕРОПРИЯТИЯ */}
+            {showEventDetails && (
+                <EventDetailsModal
+                    event={showEventDetails}
+                    onClose={() => setShowEventDetails(null)}
+                    onSave={updateEvent} 
+                    onDelete={(id) => {
+                        if (window.confirm(`Вы уверены, что хотите удалить мероприятие?`)) {
+                            removeEvent(id);
+                            setShowEventDetails(null); // Закрыть модалку после удаления
+                        }
+                    }}
+                />
+            )}
         </div>
     );
 };
 
-// --- Дочерние компоненты (с минимальными изменениями) ---
+// --- Дочерние компоненты ---
 
 const PetCard = ({ item, onCardClick, onRemoveClick }) => (
     <div className="pet-card" onClick={onCardClick}>
@@ -345,19 +382,26 @@ const AddPetCard = ({ onClick }) => (
 );
 
 // --- ОБНОВЛЕННЫЙ КОМПОНЕНТ ГАЛЕРЕИ ---
-// Убрана inline-форма, добавлена кнопка вызова модалки
-const Gallery = ({ images, currentIndex, onNext, onPrev, onRemove, onAddClick }) => (
+const Gallery = ({ images, currentIndex, onNext, onPrev, onRemove, onEdit, onAddClick }) => (
     <section>
         <h2 className="section-title">Галерея мероприятий</h2>
         <div className="gallery">
-            <button onClick={onPrev} className="gallery-arrow"><FaArrowLeft size={24} /></button>
+            <button onClick={onPrev} className="gallery-arrow" disabled={images.length <= 1}><FaArrowLeft size={24} /></button>
             <div className="gallery-slide">
                 {images.length > 0 ? (
                     <>
-                        <div className="gallery-img-container">
+                        {/* ИЗМЕНЕНИЕ: onEdit вызывается при клике на контейнер */}
+                        <div className="gallery-img-container" onClick={() => onEdit(images[currentIndex])}>
                             <img src={images[currentIndex].url} alt={images[currentIndex].title} className="gallery-img" />
-                            <button onClick={() => onRemove(currentIndex)} className="remove-btn gallery-remove-btn">
-                                <FaTimes />
+                            {/* ИЗМЕНЕНИЕ: иконка корзины (FaTrash) и предотвращение всплытия клика */}
+                            <button 
+                                onClick={(e) => {
+                                    e.stopPropagation(); 
+                                    onRemove(currentIndex);
+                                }} 
+                                className="remove-btn gallery-remove-btn"
+                            >
+                                <FaTrash />
                             </button>
                         </div>
                         <div className="gallery-description">
@@ -369,9 +413,8 @@ const Gallery = ({ images, currentIndex, onNext, onPrev, onRemove, onAddClick })
                     <div className="gallery-empty">Галерея пуста</div>
                 )}
             </div>
-            <button onClick={onNext} className="gallery-arrow"><FaArrowRight size={24} /></button>
+            <button onClick={onNext} className="gallery-arrow" disabled={images.length <= 1}><FaArrowRight size={24} /></button>
         </div>
-        {/* НОВОЕ: Кнопка для открытия модального окна добавления */}
         <button onClick={onAddClick} className="action-button success-button" style={{ marginTop: '20px' }}>
             <FaPlus style={{ marginRight: '5px' }}/> Добавить мероприятие
         </button>
@@ -392,7 +435,7 @@ const Contacts = ({ contacts, setContacts }) => (
     </section>
 );
 
-// Модальное окно ДЕТАЛЕЙ (Форма Редактирования) (остается)
+// Модальное окно ДЕТАЛЕЙ ПИТОМЦА (остается без изменений)
 const PetDetailsModal = ({ item, onClose, onSave, onDelete }) => {
     const [editData, setEditData] = useState({ ...item });
     const [newPhotoFile, setNewPhotoFile] = useState(null);
@@ -485,7 +528,7 @@ const PetDetailsModal = ({ item, onClose, onSave, onDelete }) => {
     );
 };
 
-// Модальное окно ДОБАВЛЕНИЯ ПИТОМЦА (обновлен для предпросмотра)
+// Модальное окно ДОБАВЛЕНИЯ ПИТОМЦА (остается без изменений)
 const AddPetFormModal = ({ newItem, onInputChange, onImageUpload, onRemovePhoto, onAdd, onClose }) => (
     <div className="modal-overlay">
         <div className="modal-content">
@@ -526,25 +569,24 @@ const AddPetFormModal = ({ newItem, onInputChange, onImageUpload, onRemovePhoto,
 );
 
 
-// --- НОВЫЙ КОМПОНЕНТ: Модальное окно ДОБАВЛЕНИЯ МЕРОПРИЯТИЯ ---
+// --- ОБНОВЛЕННЫЙ КОМПОНЕНТ: Модальное окно ДОБАВЛЕНИЯ МЕРОПРИЯТИЯ ---
 const AddEventFormModal = ({ newEvent, onInputChange, onImageUpload, onRemovePhoto, onAdd, onClose }) => (
     <div className="modal-overlay">
       <div className="modal-content">
         <button onClick={onClose} className="remove-btn modal-close-btn"><FaTimes /></button>
-        <h3>Добавить новое мероприятие</h3>
+        
+        {/* ИЗМЕНЕНИЕ: Убран h3 заголовок */}
         
         {/* Загрузка фото */}
         <div className="modal-img-upload-container">
           {newEvent.imageFile ? (
             <>
-              {/* Используем временный URL для предпросмотра выбранного файла */}
               <img src={URL.createObjectURL(newEvent.imageFile)} alt="Предпросмотр" className="modal-img" />
               <button onClick={onRemovePhoto} className="remove-btn image-preview-remove-btn"><FaTimes /></button>
             </>
           ) : (
             <>
               <FaPlus size={80} color="#9ca3af" />
-              {/* Поле для выбора файла */}
               <input type="file" accept="image/*" onChange={onImageUpload} className="image-upload-input" />
             </>
           )}
@@ -560,5 +602,84 @@ const AddEventFormModal = ({ newEvent, onInputChange, onImageUpload, onRemovePho
       </div>
     </div>
 );
+
+// --- НОВЫЙ КОМПОНЕНТ: Модальное окно РЕДАКТИРОВАНИЯ МЕРОПРИЯТИЯ ---
+const EventDetailsModal = ({ event, onClose, onSave, onDelete }) => {
+    const [editData, setEditData] = useState({ title: event.title, description: event.description });
+    const [newPhotoFile, setNewPhotoFile] = useState(null);
+
+    useEffect(() => {
+        setEditData({ title: event.title, description: event.description });
+        setNewPhotoFile(null); 
+    }, [event]);
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setEditData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleFileChange = (e) => {
+        setNewPhotoFile(e.target.files[0]);
+    };
+
+    const handleSaveClick = () => {
+        onSave(event.id, editData, newPhotoFile);
+    };
+
+    const handleDeleteClick = () => {
+        onDelete(event.id);
+    };
+
+    let photoPreview = event.url; 
+    if (newPhotoFile) {
+        photoPreview = URL.createObjectURL(newPhotoFile);
+    }
+
+    return (
+        <div className="modal-overlay">
+            <div className="modal-content">
+                <button onClick={onClose} className="remove-btn modal-close-btn"><FaTimes /></button>
+                
+                <div className="modal-img-upload-container">
+                    <img src={photoPreview} alt={editData.title} className="modal-img" />
+                </div>
+                
+                <div className="modal-details">
+                    <h3>Редактирование мероприятия</h3>
+
+                    <label>Заголовок:</label>
+                    <input name="title" value={editData.title} onChange={handleInputChange} className="form-input" />
+                    
+                    <label>Описание:</label>
+                    <textarea name="description" value={editData.description} onChange={handleInputChange} className="form-textarea" rows="4" />
+                    
+                    <div className="modal-actions">
+
+                        <div style={{marginBottom: '2em', marginTop: '2em'}}>
+                            <label htmlFor="photo-upload-edit-event" className="action-button default-button file-upload-button">
+                                {newPhotoFile ? `Фото: ${newPhotoFile.name}` : 'Изменить фото'}
+                                <input 
+                                    id="photo-upload-edit-event" 
+                                    type="file" 
+                                    accept="image/*" 
+                                    onChange={handleFileChange} 
+                                    style={{ display: 'none'}} 
+                                />
+                            </label>
+                        </div>
+
+                        <button onClick={handleSaveClick} className="action-button success-button" style={{marginRight: '1em'}}>
+                            Сохранить
+                        </button>
+                        
+                        <button onClick={handleDeleteClick} className="action-button danger-button">
+                            Удалить
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 export default App;
