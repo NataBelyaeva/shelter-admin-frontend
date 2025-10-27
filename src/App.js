@@ -1,18 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { FaTimes, FaPlus, FaArrowLeft, FaArrowRight } from "react-icons/fa";
+// ИЗМЕНЕНИЕ: Добавили иконку FaTrash
+import { FaTimes, FaPlus, FaArrowLeft, FaArrowRight, FaTrash } from "react-icons/fa";
 import "./App.css";
 
-
+// Главный компонент приложения
 const App = () => {
   // --- Состояние для питомцев ---
-  // Начальное состояние - пустой массив.
   const [items, setItems] = useState([]);
-  
   const [newItem, setNewItem] = useState({
     name: "", gender: "Мальчик", age: "", description: "",
-    health: "", sterilized: false, tray: false, 
-    // Photo теперь хранит сам файл. Начинаем с null.
-    photo: null 
+    health: "", sterilized: false, tray: false, photo: null
   });
   const [showItemDetails, setShowItemDetails] = useState(null);
   const [showNewForm, setShowNewForm] = useState(false);
@@ -27,33 +24,33 @@ const App = () => {
   const [newImage, setNewImage] = useState({ url: "", title: "", description: "" });
   const [contacts, setContacts] = useState({ phone: "8-800-555-35-35", requisites: "ИНН 1234567890" });
   
-  // URL нашего API
+  // Адрес нашего бэкенда
   const API_URL = 'http://localhost:8080/api/pets';
 
-  // Функция для загрузки питомцев с сервера
+  // --- CRUD Функции для ПИТОМЦЕВ ---
+
+  // 1. (Read) Загрузка питомцев с сервера
   const loadPets = () => {
     fetch(API_URL)
       .then(response => response.json())
       .then(data => {
-        // Сервер отдает относительный путь к фото, мы добавляем к нему адрес сервера
         const petsWithFullPhotoPath = data.map(pet => ({
             ...pet,
-            photo: pet.photo ? `http://localhost:8080${pet.photo}` : 'https://placedog.net/300/200' // Фото по умолчанию, если его нет
+            photo: pet.photo ? `http://localhost:8080${pet.photo}` : 'https://placedog.net/300/200'
         }));
-        setItems(petsWithFullPhotoPath.reverse()); // Новые питомцы будут сверху
+        setItems(petsWithFullPhotoPath.reverse());
       })
       .catch(error => console.error("Ошибка при загрузке питомцев:", error));
   };
   
-  // Используем useEffect для загрузки данных при первом рендере компонента
+  // Загружаем питомцев один раз при старте
   useEffect(() => {
     loadPets();
   }, []);
 
 
-  // Функция добавления питомца теперь отправляет данные на сервер
+  // 2. (Create) Добавление нового питомца
   const addItem = () => {
-    // Создаем FormData для отправки файла и данных
     const formData = new FormData();
     formData.append('name', newItem.name);
     formData.append('age', newItem.age);
@@ -63,32 +60,72 @@ const App = () => {
     formData.append('sterilized', newItem.sterilized);
     formData.append('tray', newItem.tray);
     if (newItem.photo) {
-      formData.append('photo', newItem.photo); // Добавляем файл
+      formData.append('photo', newItem.photo);
     }
 
     fetch(API_URL, {
       method: 'POST',
-      body: formData, // Отправляем FormData
+      body: formData,
     })
     .then(response => response.json())
     .then(() => {
-      // После успешного добавления:
-      setShowNewForm(false); // Закрываем форму
-      setNewItem({ // Очищаем форму
+      setShowNewForm(false);
+      setNewItem({
         name: "", gender: "Мальчик", age: "", description: "",
         health: "", sterilized: false, tray: false, photo: null
       });
-      loadPets(); // Перезагружаем список питомцев с сервера
+      loadPets();
     })
     .catch(error => console.error("Ошибка при добавлении питомца:", error));
   };
 
+  // 3. (Update) Обновление питомца
+  const handleUpdateItem = (id, updatedData, photoFile) => {
+    const formData = new FormData();
+
+    formData.append('name', updatedData.name);
+    formData.append('age', updatedData.age);
+    formData.append('gender', updatedData.gender);
+    formData.append('health', updatedData.health);
+    formData.append('description', updatedData.description);
+    formData.append('sterilized', updatedData.sterilized);
+    formData.append('tray', updatedData.tray);
+
+    if (photoFile) {
+      formData.append('photo', photoFile);
+    }
+    
+    fetch(`${API_URL}/${id}`, {
+        method: 'PUT',
+        body: formData,
+    })
+    .then(res => res.json())
+    .then(() => {
+        setShowItemDetails(null); 
+        loadPets(); 
+    })
+    .catch(error => console.error("Ошибка при обновлении питомца:", error));
+  };
+
+  // 4. (Delete) Удаление питомца
+  const removeItem = (id) => {
+    fetch(`${API_URL}/${id}`, {
+      method: 'DELETE',
+    })
+    .then(response => response.json())
+    .then(() => {
+      setShowItemDetails(null);
+      loadPets();
+    })
+    .catch(error => console.error("Ошибка при удалении питомца:", error));
+  };
+
+  // --- Вспомогательные функции ---
   const handleItemInput = (e) => {
     const { name, value, type, checked } = e.target;
     setNewItem({ ...newItem, [name]: type === "checkbox" ? checked : value });
   };
   
-  // Загрузка изображения теперь сохраняет сам файл, а не data URL
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -96,44 +133,51 @@ const App = () => {
     }
   };
 
-  // Функция удаления теперь работает по ID и отправляет запрос на сервер
-  const removeItem = (id) => {
-    fetch(`${API_URL}/${id}`, {
-      method: 'DELETE',
-    })
-    .then(response => response.json())
-    .then(() => {
-      setShowItemDetails(null); // Закрываем модальное окно, если было открыто
-      loadPets(); // Перезагружаем список питомцев
-    })
-    .catch(error => console.error("Ошибка при удалении питомца:", error));
-  };
-
   const visibleItems = showAll ? items : items.slice(0, 7);
 
-  // --- Carousel and Contact handlers ---
+  // --- Handlers для Галереи и Контактов (без изменений) ---
   const next = () => setCarouselIndex((carouselIndex + 1) % images.length);
   const prev = () => setCarouselIndex((carouselIndex - 1 + images.length) % images.length);
-  const handleNewCarouselImageInput = (e) => { /* ... */ };
-  const addCarouselItem = () => { /* ... */ };
-  const removeImageFromCarousel = (indexToRemove) => { /* ... */ };
+  const handleNewCarouselImageInput = (e) => {
+    const { name, value } = e.target;
+    setNewImage({ ...newImage, [name]: value });
+  };
+  const addCarouselItem = () => {
+    if (newImage.url && newImage.title) {
+      setImages([newImage, ...images]);
+      setNewImage({ url: "", title: "", description: "" });
+    }
+  };
+  const removeImageFromCarousel = (indexToRemove) => {
+    const newImages = images.filter((_, idx) => idx !== indexToRemove);
+    setImages(newImages);
+    if (newImages.length === 0) setCarouselIndex(0);
+    else if (carouselIndex >= indexToRemove) {
+      setCarouselIndex(prevIndex => (prevIndex - 1 + newImages.length) % newImages.length);
+    }
+  };
 
+  // --- Рендер (JSX) ---
   return (
     <div className="container">
       <h1 className="main-title">Административная панель управления</h1>
 
+      {/* Секция Питомцы */}
       <section>
         <h2 className="section-title">Наши питомцы</h2>
         <div className="pets-grid">
           <AddPetCard onClick={() => setShowNewForm(true)} />
-          {visibleItems.map((item) => ( // убрали index
+          {visibleItems.map((item) => (
             <PetCard
-              key={item.id} // Используем уникальный id из базы данных
+              key={item.id}
               item={item}
-              onCardClick={() => setShowItemDetails(item)} // Передаем весь объект
+              onCardClick={() => setShowItemDetails(item)}
               onRemoveClick={(e) => {
                 e.stopPropagation();
-                removeItem(item.id); // Удаляем по id
+                // Добавим подтверждение перед удалением
+                if (window.confirm(`Вы уверены, что хотите удалить ${item.name}?`)) {
+                  removeItem(item.id);
+                }
               }}
             />
           ))}
@@ -145,6 +189,7 @@ const App = () => {
         )}
       </section>
       
+      {/* Секция Галерея */}
       <Gallery
         images={images}
         currentIndex={carouselIndex}
@@ -156,16 +201,25 @@ const App = () => {
         onAddImage={addCarouselItem}
       />
       
+      {/* Секция Контакты */}
       <Contacts contacts={contacts} setContacts={setContacts} />
 
-      {/* Логика отображения модального окна стала проще */ }
+      {/* Модальное окно РЕДАКТИРОВАНИЯ */}
       {showItemDetails && (
         <PetDetailsModal
           item={showItemDetails}
           onClose={() => setShowItemDetails(null)}
+          onSave={handleUpdateItem} 
+          // ИЗМЕНЕНИЕ: Передаем функцию удаления в модальное окно
+          onDelete={() => {
+             if (window.confirm(`Вы уверены, что хотите удалить ${showItemDetails.name}?`)) {
+                removeItem(showItemDetails.id);
+             }
+          }}
         />
       )}
 
+      {/* Модальное окно ДОБАВЛЕНИЯ */}
       {showNewForm && (
         <AddPetFormModal
           newItem={newItem}
@@ -179,12 +233,14 @@ const App = () => {
   );
 };
 
-
 // --- Дочерние компоненты ---
 
 const PetCard = ({ item, onCardClick, onRemoveClick }) => (
   <div className="pet-card" onClick={onCardClick}>
-    <button onClick={onRemoveClick} className="remove-btn pet-card-remove-btn"><FaTimes /></button>
+    <button onClick={onRemoveClick} className="remove-btn pet-card-remove-btn">
+      {/* ИЗМЕНЕНИЕ: Заменили иконку на мусорную корзину */}
+      <FaTrash />
+    </button>
     <img src={item.photo} alt={item.name} className="pet-card-img" />
     <p><strong>Имя:</strong> {item.name}</p>
     <p><strong>Пол:</strong> {item.gender}</p>
@@ -247,34 +303,112 @@ const Contacts = ({ contacts, setContacts }) => (
   </section>
 );
 
-const PetDetailsModal = ({ item, onClose }) => (
-  <div className="modal-overlay">
-    <div className="modal-content">
-      <button onClick={onClose} className="remove-btn modal-close-btn"><FaTimes /></button>
-      <div className="modal-img-container"><img src={item.photo} alt={item.name} className="modal-img" /></div>
-      <div className="modal-details">
-        <h3>{item.name}</h3>
-        <p><strong>Пол:</strong> {item.gender}</p>
-        <p><strong>Возраст:</strong> {item.age}</p>
-        <p><strong>Описание:</strong> {item.description}</p>
-        {/* Поля, чтобы соответствовать API */}
-        <p><strong>Здоровье:</strong> {item.health}</p>
-        <div className="pet-options">
-          <p><strong>Стерилизован:</strong> {item.sterilized ? "Да" : "Нет"}</p>
-          <p><strong>К лотку приучен:</strong> {item.tray ? "Да" : "Нет"}</p>
+
+//
+// Модальное окно ДЕТАЛЕЙ (Форма Редактирования)
+// ИЗМЕНЕНИЕ: Принимает onDelete
+//
+const PetDetailsModal = ({ item, onClose, onSave, onDelete }) => {
+  const [editData, setEditData] = useState({ ...item });
+  const [newPhotoFile, setNewPhotoFile] = useState(null);
+
+  useEffect(() => {
+    setEditData({ ...item });
+    setNewPhotoFile(null); 
+  }, [item]);
+
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setEditData(prev => ({
+        ...prev,
+        [name]: type === "checkbox" ? checked : value
+    }));
+  };
+
+  const handleFileChange = (e) => {
+    setNewPhotoFile(e.target.files[0]);
+  };
+
+  const handleSaveClick = () => {
+    onSave(item.id, editData, newPhotoFile);
+  };
+
+  let photoPreview = editData.photo; 
+  if (newPhotoFile) {
+    photoPreview = URL.createObjectURL(newPhotoFile);
+  }
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <button onClick={onClose} className="remove-btn modal-close-btn"><FaTimes /></button>
+        
+        {/* Колонка 1: Фото */}
+        <div className="modal-img-upload-container">
+          <img src={photoPreview} alt={editData.name} className="modal-img" />
+          {/* ИЗМЕНЕНИЕ: Поле для смены фото переехало вниз */}
+        </div>
+        
+        {/* Колонка 2: Поля для редактирования */}
+        <div className="modal-details">
+          <label>Имя:</label>
+          <input name="name" value={editData.name} onChange={handleInputChange} className="form-input" />
+          
+          <label>Пол:</label>
+          <div className="radio-group">
+            <label><input type="radio" name="gender" value="Мальчик" checked={editData.gender === "Мальчик"} onChange={handleInputChange} /> Мальчик</label>
+            <label><input type="radio" name="gender" value="Девочка" checked={editData.gender === "Девочка"} onChange={handleInputChange} /> Девочка</label>
+          </div>
+
+          <label>Возраст:</label>
+          <input name="age" value={editData.age} onChange={handleInputChange} className="form-input" />
+          
+          <label>Здоровье:</label>
+          <input name="description" value={editData.description} onChange={handleInputChange} className="form-input" />
+          
+          <label>Описание характера питомца:</label>
+          <textarea name="health" value={editData.health || ''} onChange={handleInputChange} className="form-textarea" />
+
+          <div className="checkbox-group">
+            <label><input type="checkbox" name="sterilized" checked={editData.sterilized} onChange={handleInputChange} /> Стерилизован</label>
+            <label><input type="checkbox" name="tray" checked={editData.tray} onChange={handleInputChange} /> Приучен к лотку</label>
+          </div>
+
+        {/* ИЗМЕНЕНИЕ: Блок с кнопками внизу */}
+        <div className="modal-actions">
+            {/* Кнопка для загрузки фото, стилизованная как action-button */}
+            <label htmlFor="photo-upload-edit" className="action-button default-button file-upload-button">
+              {newPhotoFile ? `Фото: ${newPhotoFile.name}` : 'Изменить фото'}
+              <input 
+                id="photo-upload-edit" 
+                type="file" 
+                accept="image/*" 
+                onChange={handleFileChange} 
+                style={{ display: 'none'}} // Скрываем стандартный input
+              />
+            </label>
+
+            <button onClick={handleSaveClick} className="action-button success-button" style={{marginRight: '1em', marginLeft: '1em'}}>
+              Сохранить
+            </button>
+            
+            <button onClick={onDelete} className="action-button danger-button">
+              Удалить
+            </button>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
-// Форма добавления, чтобы соответствовать модели данных
+
+// Модальное окно ДОБАВЛЕНИЯ (остается как было)
 const AddPetFormModal = ({ newItem, onInputChange, onImageUpload, onAdd, onClose }) => (
     <div className="modal-overlay">
       <div className="modal-content">
         <button onClick={onClose} className="remove-btn modal-close-btn"><FaTimes /></button>
         <div className="modal-img-upload-container">
-          {/* Предпросмотр убрали для простоты, т.к. работаем с файлом */}
           <FaPlus size={80} color="#9ca3af" />
           <input type="file" accept="image/*" onChange={onImageUpload} className="image-upload-input" />
           {newItem.photo && <p>Выбран файл: {newItem.photo.name}</p>}
@@ -287,7 +421,7 @@ const AddPetFormModal = ({ newItem, onInputChange, onImageUpload, onAdd, onClose
           </div>
           <input name="age" placeholder="Возраст (например, 2 года)" value={newItem.age} onChange={onInputChange} className="form-input" />
           <input name="description" placeholder="Состояние здоровья" value={newItem.description} onChange={onInputChange} className="form-input" />
-          <textarea name="health" placeholder="Описание черт характера" value={newItem.health} onChange={onInputChange} className="form-textarea" />
+          <textarea name="health" placeholder="Главная черта характера" value={newItem.health} onChange={onInputChange} className="form-textarea" />
           <div className="checkbox-group">
             <label><input type="checkbox" name="sterilized" checked={newItem.sterilized} onChange={onInputChange} /> Стерилизован</label>
             <label><input type="checkbox" name="tray" checked={newItem.tray} onChange={onInputChange} /> Приучен к лотку</label>
