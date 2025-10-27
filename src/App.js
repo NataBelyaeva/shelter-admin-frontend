@@ -376,19 +376,22 @@ const PetDetailsModal = ({ item, onClose, onSave, onDelete }) => {
 
         {/* ИЗМЕНЕНИЕ: Блок с кнопками внизу */}
         <div className="modal-actions">
-            {/* Кнопка для загрузки фото, стилизованная как action-button */}
-            <label htmlFor="photo-upload-edit" className="action-button default-button file-upload-button">
-              {newPhotoFile ? `Фото: ${newPhotoFile.name}` : 'Изменить фото'}
-              <input 
-                id="photo-upload-edit" 
-                type="file" 
-                accept="image/*" 
-                onChange={handleFileChange} 
-                style={{ display: 'none'}} // Скрываем стандартный input
-              />
-            </label>
 
-            <button onClick={handleSaveClick} className="action-button success-button" style={{marginRight: '1em', marginLeft: '1em'}}>
+            <div style={{marginBottom: '2em', marginTop: '2em'}}>
+              {/* Кнопка для загрузки фото, стилизованная как action-button */}
+              <label htmlFor="photo-upload-edit" className="action-button default-button file-upload-button">
+                {newPhotoFile ? `Фото: ${newPhotoFile.name}` : 'Изменить фото'}
+                <input 
+                  id="photo-upload-edit" 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleFileChange} 
+                  style={{ display: 'none'}} // Скрываем стандартный input
+                />
+              </label>
+            </div>
+
+            <button onClick={handleSaveClick} className="action-button success-button" style={{marginRight: '1em'}}>
               Сохранить
             </button>
             
