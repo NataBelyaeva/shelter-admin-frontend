@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { FaTimes, FaPlus, FaArrowLeft, FaArrowRight, FaTrash } from "react-icons/fa";
+import { FaSave, FaTimes, FaPlus, FaArrowLeft, FaArrowRight, FaTrash } from "react-icons/fa";
 import "./App.css";
 
 // --- API Configuration ---
 const BASE_API_URL = 'http://localhost:8080';
 const PETS_API_URL = `${BASE_API_URL}/api/pets`;
 const EVENTS_API_URL = `${BASE_API_URL}/api/events`;
+const SETTINGS_API_URL = `${BASE_API_URL}/api/settings`;
 
 // Главный компонент приложения
 const App = () => {
@@ -35,7 +36,10 @@ const App = () => {
     const [showNewEventForm, setShowNewEventForm] = useState(false);
     
     // --- Состояние для контактов ---
-    const [contacts, setContacts] = useState({ phone: "8-800-555-35-35", requisites: "ИНН 1234567890" });
+    const [settings, setSettings] = useState({ 
+        cardNumber: "", 
+        accountNumber: "" 
+    });
     
     // ====================================================================
     // === CRUD Функции для ПИТОМЦЕВ ======================================
@@ -250,10 +254,52 @@ const App = () => {
         }
     };
 
+    // ====================================================================
+    // === CRUD Функции для Settings (НАСТРОЕК) ===========================
+    // ====================================================================
+
+    // 1. (Read) Загрузка настроек
+    const loadSettings = () => {
+        fetch(SETTINGS_API_URL)
+            .then(response => response.json())
+            .then(data => {
+                // ИЗМЕНЕНИЕ: Бэкенд возвращает card_number и account_number (snake_case)
+                setSettings({
+                    cardNumber: data.card_number || "",
+                    accountNumber: data.account_number || ""
+                });
+            })
+            .catch(error => console.error("Ошибка при загрузке настроек:", error));
+    };
+
+    // 2. (Update) Сохранение настроек
+    const saveSettings = () => {
+        // Мы отправляем данные в camelCase, как ожидается контроллером
+        const dataToSend = {
+            cardNumber: settings.cardNumber,
+            accountNumber: settings.accountNumber
+        };
+
+        fetch(SETTINGS_API_URL, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(dataToSend),
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message || "Настройки успешно сохранены.");
+            loadSettings(); // Перезагружаем данные для подтверждения
+        })
+        .catch(error => console.error("Ошибка при сохранении настроек:", error));
+    };
+
     // --- useEffect (обновление) ---
     useEffect(() => {
         loadPets();
         loadEvents(); 
+        loadSettings();
     }, []);
 
     const visibleItems = showAll ? items : items.slice(0, 7);
@@ -303,7 +349,11 @@ const App = () => {
             />
             
             {/* Секция Контакты */}
-            <Contacts contacts={contacts} setContacts={setContacts} />
+            <Contacts 
+                settings={settings} 
+                setSettings={setSettings} 
+                onSave={saveSettings} 
+            />
 
             {/* Модальное окно РЕДАКТИРОВАНИЯ ПИТОМЦА */}
             {showItemDetails && (
@@ -421,19 +471,49 @@ const Gallery = ({ images, currentIndex, onNext, onPrev, onRemove, onEdit, onAdd
     </section>
 );
 
-const Contacts = ({ contacts, setContacts }) => (
-    <section className="form-container">
-        <h2 className="section-title">Контакты</h2>
-        <div className="contact-field">
-            <label>Телефон:</label>
-            <input value={contacts.phone} onChange={(e) => setContacts({ ...contacts, phone: e.target.value })} className="form-input" />
-        </div>
-        <div className="contact-field">
-            <label>Реквизиты:</label>
-            <input value={contacts.requisites} onChange={(e) => setContacts({ ...contacts, requisites: e.target.value })} className="form-input" />
-        </div>
-    </section>
-);
+const Contacts = ({ settings, setSettings, onSave }) => {
+    
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        // name: cardNumber или accountNumber
+        setSettings({ ...settings, [name]: value });
+    };
+
+    return (
+        <section className="form-container">
+            <h2 className="section-title">Реквизиты</h2>
+            <p className="section-description">
+                Здесь вы управляете данными карты и счета для пожертвований.
+            </p>
+            
+            <div className="contact-field">
+                <label>Номер карты:</label>
+                <input 
+                    name="cardNumber" 
+                    value={settings.cardNumber} 
+                    onChange={handleInputChange} 
+                    className="form-input" 
+                    placeholder="Например, 1234 5678 9012 3456"
+                />
+            </div>
+            
+            <div className="contact-field">
+                <label>Номер счета:</label>
+                <input 
+                    name="accountNumber" 
+                    value={settings.accountNumber} 
+                    onChange={handleInputChange} 
+                    className="form-input" 
+                    placeholder="Например, 40817810000000000000"
+                />
+            </div>
+            
+            <button onClick={onSave} className="action-button success-button" style={{ marginTop: '10px' }}>
+                <FaSave style={{ marginRight: '5px' }} /> Сохранить реквизиты
+            </button>
+        </section>
+    );
+};
 
 // Модальное окно ДЕТАЛЕЙ ПИТОМЦА (остается без изменений)
 const PetDetailsModal = ({ item, onClose, onSave, onDelete }) => {
