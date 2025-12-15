@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { FaSave, FaTimes, FaPlus, FaArrowLeft, FaArrowRight, FaTrash } from "react-icons/fa";
+// Добавлены иконки для выхода и настроек
+import { FaTimes, FaPlus, FaArrowLeft, FaArrowRight, FaTrash, FaSave, FaSignOutAlt} from "react-icons/fa"; 
 import "./App.css";
 
 // --- API Configuration ---
@@ -7,9 +8,44 @@ const BASE_API_URL = 'http://localhost:8080';
 const PETS_API_URL = `${BASE_API_URL}/api/pets`;
 const EVENTS_API_URL = `${BASE_API_URL}/api/events`;
 const SETTINGS_API_URL = `${BASE_API_URL}/api/settings`;
+const AUTH_API_URL = `${BASE_API_URL}/api/auth`;
+
+// -------------------------------------------------------------------
+// НОВОЕ: Вспомогательная функция для защищенных запросов (с токеном)
+// -------------------------------------------------------------------
+const securedFetch = async (url, options = {}) => {
+    const token = localStorage.getItem("accessToken");
+    
+    if (!token) {
+        throw new Error("Нет токена авторизации. Пожалуйста, войдите.");
+    }
+    
+    // Добавляем заголовок Authorization: Bearer <token>
+    const headers = {
+        ...options.headers,
+        'Authorization': `Bearer ${token}`,
+    };
+    
+    const response = await fetch(url, { ...options, headers });
+
+    // Обработка 401/403: если токен недействителен, разлогиниваем пользователя
+    if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem("accessToken");
+        alert("Сессия истекла или токен недействителен. Пожалуйста, войдите снова.");
+        window.location.reload(); 
+        return;
+    }
+
+    return response;
+};
 
 // Главный компонент приложения
 const App = () => {
+    // --- НОВОЕ: Состояние аутентификации и вкладок ---
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [isLoading, setIsLoading] = useState(true); 
+    const [activeTab, setActiveTab] = useState('pets'); // 'pets', 'gallery', 'settings', 'users'
+
     // --- Состояние для питомцев ---
     const [items, setItems] = useState([]);
     const [newItem, setNewItem] = useState({
@@ -25,9 +61,7 @@ const App = () => {
     // --- Состояние для мероприятий (Галерея) ---
     const [carouselIndex, setCarouselIndex] = useState(0);
     const [images, setImages] = useState([]); 
-    const [showEventDetails, setShowEventDetails] = useState(null); // НОВОЕ: Для редактирования мероприятия
-    
-    // Состояние для добавления мероприятия через модалку
+    const [showEventDetails, setShowEventDetails] = useState(null); 
     const [newEvent, setNewEvent] = useState({ 
         title: "", 
         description: "", 
@@ -41,11 +75,43 @@ const App = () => {
         accountNumber: "" 
     });
     
+    // -------------------------------------------------------------------
+    // НОВОЕ: ФУНКЦИИ АУТЕНТИФИКАЦИИ
+    // -------------------------------------------------------------------
+    
+    // Проверка токена при загрузке
+    useEffect(() => {
+        const token = localStorage.getItem("accessToken");
+        if (token) {
+            setIsAuthenticated(true);
+        }
+        setIsLoading(false);
+        // Загружаем публичные данные независимо от авторизации
+        loadPets();
+        loadEvents();
+        // Настройки грузим только после входа, чтобы не вызывать 401 сразу
+        if (token) {
+            loadSettings();
+        }
+    }, []);
+
+    const handleLogin = (token) => {
+        localStorage.setItem("accessToken", token);
+        setIsAuthenticated(true);
+        loadSettings(); // Загружаем настройки после входа
+    };
+
+    const handleLogout = () => {
+        localStorage.removeItem("accessToken");
+        setIsAuthenticated(false);
+        setActiveTab('pets');
+    };
+    
     // ====================================================================
-    // === CRUD Функции для ПИТОМЦЕВ ======================================
+    // === CRUD Функции для ПИТОМЦЕВ (АДАПТИРОВАНЫ) ========================
     // ====================================================================
 
-    // 1. (Read) Загрузка питомцев с сервера
+    // 1. (Read) Загрузка питомцев (ОСТАВЛЯЕМ БЕЗ ЗАЩИТЫ)
     const loadPets = () => {
         fetch(PETS_API_URL)
             .then(response => response.json())
@@ -59,8 +125,8 @@ const App = () => {
             .catch(error => console.error("Ошибка при загрузке питомцев:", error));
     };
     
-    // 2. (Create) Добавление нового питомца
-    const addItem = () => {
+    // 2. (Create) Добавление нового питомца (ИСПОЛЬЗУЕМ securedFetch)
+    const addItem = async () => {
         const formData = new FormData();
         formData.append('name', newItem.name);
         formData.append('age', newItem.age);
@@ -74,24 +140,26 @@ const App = () => {
             formData.append('photo', newItem.photoFile);
         }
 
-        fetch(PETS_API_URL, {
-            method: 'POST',
-            body: formData,
-        })
-        .then(response => response.json())
-        .then(() => {
-            setShowNewForm(false);
-            setNewItem({
-                name: "", gender: "Мальчик", age: "", description: "",
-                health: "", sterilized: false, tray: false, photoFile: null, photoPreviewUrl: null
+        try {
+            const response = await securedFetch(PETS_API_URL, {
+                method: 'POST',
+                body: formData,
             });
-            loadPets();
-        })
-        .catch(error => console.error("Ошибка при добавлении питомца:", error));
+            if (response && response.ok) {
+                setShowNewForm(false);
+                setNewItem({
+                    name: "", gender: "Мальчик", age: "", description: "",
+                    health: "", sterilized: false, tray: false, photoFile: null, photoPreviewUrl: null
+                });
+                loadPets();
+            }
+        } catch (error) {
+            console.error("Ошибка при добавлении питомца:", error);
+        }
     };
 
-    // 3. (Update) Обновление питомца
-    const handleUpdateItem = (id, updatedData, photoFile) => {
+    // 3. (Update) Обновление питомца (ИСПОЛЬЗУЕМ securedFetch)
+    const handleUpdateItem = async (id, updatedData, photoFile) => {
         const formData = new FormData();
         formData.append('name', updatedData.name);
         formData.append('age', updatedData.age);
@@ -105,29 +173,33 @@ const App = () => {
             formData.append('photo', photoFile);
         }
         
-        fetch(`${PETS_API_URL}/${id}`, {
-            method: 'PUT',
-            body: formData,
-        })
-        .then(res => res.json())
-        .then(() => {
-            setShowItemDetails(null); 
-            loadPets(); 
-        })
-        .catch(error => console.error("Ошибка при обновлении питомца:", error));
+        try {
+            const response = await securedFetch(`${PETS_API_URL}/${id}`, {
+                method: 'PUT',
+                body: formData,
+            });
+            if (response && response.ok) {
+                setShowItemDetails(null); 
+                loadPets(); 
+            }
+        } catch (error) {
+            console.error("Ошибка при обновлении питомца:", error);
+        }
     };
 
-    // 4. (Delete) Удаление питомца
-    const removeItem = (id) => {
-        fetch(`${PETS_API_URL}/${id}`, {
-            method: 'DELETE',
-        })
-        .then(response => response.json())
-        .then(() => {
-            setShowItemDetails(null);
-            loadPets();
-        })
-        .catch(error => console.error("Ошибка при удалении питомца:", error));
+    // 4. (Delete) Удаление питомца (ИСПОЛЬЗУЕМ securedFetch)
+    const removeItem = async (id) => {
+        try {
+            const response = await securedFetch(`${PETS_API_URL}/${id}`, {
+                method: 'DELETE',
+            });
+            if (response && response.ok) {
+                setShowItemDetails(null);
+                loadPets();
+            }
+        } catch (error) {
+            console.error("Ошибка при удалении питомца:", error);
+        }
     };
 
     // --- Вспомогательные функции для питомцев ---
@@ -148,10 +220,10 @@ const App = () => {
     };
     
     // ====================================================================
-    // === CRUD Функции для МЕРОПРИЯТИЙ (Event) ===========================
+    // === CRUD Функции для МЕРОПРИЯТИЙ (АДАПТИРОВАНЫ) =====================
     // ====================================================================
     
-    // 1. (Read) Загрузка мероприятий с сервера
+    // 1. (Read) Загрузка мероприятий (ОСТАВЛЯЕМ БЕЗ ЗАЩИТЫ)
     const loadEvents = () => {
         fetch(EVENTS_API_URL)
             .then(res => res.json())
@@ -162,15 +234,14 @@ const App = () => {
                     title: event.title,
                     description: event.description,
                 }));
-                // Мероприятия приходят от новых к старым, сохраняем порядок
                 setImages(eventsData); 
                 if (eventsData.length > 0) setCarouselIndex(0);
             })
             .catch(error => console.error("Ошибка при загрузке мероприятий:", error));
     };
     
-    // 2. (Create) Добавление нового мероприятия
-    const addEvent = () => {
+    // 2. (Create) Добавление нового мероприятия (ИСПОЛЬЗУЕМ securedFetch)
+    const addEvent = async () => {
         if (!newEvent.title || !newEvent.imageFile) {
             alert("Заголовок, фото и описание мероприятия обязательны!");
             return;
@@ -181,24 +252,23 @@ const App = () => {
         formData.append('description', newEvent.description);
         formData.append('image', newEvent.imageFile); 
 
-        fetch(EVENTS_API_URL, {
-            method: 'POST',
-            body: formData,
-        })
-        .then(response => response.json())
-        .then(() => {
-            setNewEvent({ title: "", description: "", imageFile: null });
-            setShowNewEventForm(false);
-            loadEvents(); 
-        })
-        .catch(error => {
+        try {
+            const response = await securedFetch(EVENTS_API_URL, {
+                method: 'POST',
+                body: formData,
+            });
+            if (response && response.ok) {
+                setNewEvent({ title: "", description: "", imageFile: null });
+                setShowNewEventForm(false);
+                loadEvents(); 
+            }
+        } catch (error) {
             console.error("Ошибка при добавлении мероприятия:", error);
-            alert("Ошибка при добавлении мероприятия. Проверьте консоль.");
-        });
+        }
     };
     
-    // 3. (Update) Обновление мероприятия (НОВАЯ ФУНКЦИЯ)
-    const updateEvent = (id, updatedData, imageFile) => {
+    // 3. (Update) Обновление мероприятия (ИСПОЛЬЗУЕМ securedFetch)
+    const updateEvent = async (id, updatedData, imageFile) => {
         const formData = new FormData();
         formData.append('title', updatedData.title);
         formData.append('description', updatedData.description);
@@ -207,34 +277,37 @@ const App = () => {
             formData.append('image', imageFile);
         }
 
-        fetch(`${EVENTS_API_URL}/${id}`, {
-            method: 'PUT',
-            body: formData,
-        })
-        .then(res => res.json())
-        .then(() => {
-            setShowEventDetails(null); 
-            loadEvents(); 
-        })
-        .catch(error => console.error("Ошибка при обновлении мероприятия:", error));
+        try {
+            const response = await securedFetch(`${EVENTS_API_URL}/${id}`, {
+                method: 'PUT',
+                body: formData,
+            });
+            if (response && response.ok) {
+                setShowEventDetails(null); 
+                loadEvents(); 
+            }
+        } catch (error) {
+            console.error("Ошибка при обновлении мероприятия:", error);
+        }
     };
     
-    // 4. (Delete) Удаление мероприятия
-    const removeEvent = (id) => {
+    // 4. (Delete) Удаление мероприятия (ИСПОЛЬЗУЕМ securedFetch)
+    const removeEvent = async (id) => {
         if (!window.confirm("Вы уверены, что хотите удалить это мероприятие?")) return;
 
-        fetch(`${EVENTS_API_URL}/${id}`, {
-            method: 'DELETE',
-        })
-        .then(response => response.json())
-        .then(() => {
-            loadEvents(); 
-        })
-        .catch(error => console.error("Ошибка при удалении мероприятия:", error));
+        try {
+            const response = await securedFetch(`${EVENTS_API_URL}/${id}`, {
+                method: 'DELETE',
+            });
+            if (response && response.ok) {
+                loadEvents(); 
+            }
+        } catch (error) {
+            console.error("Ошибка при удалении мероприятия:", error);
+        }
     };
 
     // --- Handlers для Галереи ---
-    
     const handleNewEventInput = (e) => {
         const { name, value } = e.target;
         setNewEvent({ ...newEvent, [name]: value });
@@ -247,7 +320,6 @@ const App = () => {
         }
     };
     
-    // Функция для удаления, которая мапит индекс карусели на ID
     const removeImageFromCarousel = (indexToRemove) => {
         if (images[indexToRemove]) {
             removeEvent(images[indexToRemove].id);
@@ -255,108 +327,161 @@ const App = () => {
     };
 
     // ====================================================================
-    // === CRUD Функции для Settings (НАСТРОЕК) ===========================
+    // === CRUD Функции для Settings (АДАПТИРОВАНЫ) ========================
     // ====================================================================
 
-    // 1. (Read) Загрузка настроек
-    const loadSettings = () => {
-        fetch(SETTINGS_API_URL)
-            .then(response => response.json())
-            .then(data => {
-                // ИЗМЕНЕНИЕ: Бэкенд возвращает card_number и account_number (snake_case)
-                setSettings({
-                    cardNumber: data.card_number || "",
-                    accountNumber: data.account_number || ""
-                });
-            })
-            .catch(error => console.error("Ошибка при загрузке настроек:", error));
+    // 1. (Read) Загрузка настроек (ИСПОЛЬЗУЕМ securedFetch)
+    const loadSettings = async () => {
+        try {
+            const response = await securedFetch(SETTINGS_API_URL);
+            const data = await response.json();
+            
+            setSettings({
+                cardNumber: data.card_number || "",
+                accountNumber: data.account_number || ""
+            });
+        } catch (error) {
+            console.error("Ошибка при загрузке настроек:", error);
+        }
     };
 
-    // 2. (Update) Сохранение настроек
-    const saveSettings = () => {
-        // Мы отправляем данные в camelCase, как ожидается контроллером
+    // 2. (Update) Сохранение настроек (ИСПОЛЬЗУЕМ securedFetch)
+    const saveSettings = async () => {
         const dataToSend = {
             cardNumber: settings.cardNumber,
             accountNumber: settings.accountNumber
         };
 
-        fetch(SETTINGS_API_URL, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(dataToSend),
-        })
-        .then(response => response.json())
-        .then(data => {
-            alert(data.message || "Настройки успешно сохранены.");
-            loadSettings(); // Перезагружаем данные для подтверждения
-        })
-        .catch(error => console.error("Ошибка при сохранении настроек:", error));
+        try {
+            const response = await securedFetch(SETTINGS_API_URL, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dataToSend),
+            });
+            if (response && response.ok) {
+                const data = await response.json();
+                alert(data.message || "Настройки успешно сохранены.");
+                loadSettings();
+            }
+        } catch (error) {
+            console.error("Ошибка при сохранении настроек:", error);
+        }
     };
-
-    // --- useEffect (обновление) ---
-    useEffect(() => {
-        loadPets();
-        loadEvents(); 
-        loadSettings();
-    }, []);
 
     const visibleItems = showAll ? items : items.slice(0, 7);
     const next = () => setCarouselIndex((carouselIndex + 1) % images.length);
     const prev = () => setCarouselIndex((carouselIndex - 1 + images.length) % images.length);
 
-    // --- Рендер (JSX) ---
+    // -------------------------------------------------------------------
+    // РЕНДЕР: Главный компонент App
+    // -------------------------------------------------------------------
+    
+    if (isLoading) {
+        return <div className="loading">Загрузка...</div>;
+    }
+    
+    // УСЛОВНЫЙ РЕНДЕР: Если не залогинен, показываем форму входа
+    if (!isAuthenticated) {
+        return <LoginForm onLogin={handleLogin} />;
+    }
+
+    // Рендер после успешного входа
     return (
         <div className="container">
-            <h1 className="main-title">Административная панель управления</h1>
-
-            {/* Секция Питомцы */}
-            <section>
-                <h2 className="section-title">Наши питомцы</h2>
-                <div className="pets-grid">
-                    <AddPetCard onClick={() => setShowNewForm(true)} />
-                    {visibleItems.map((item) => (
-                        <PetCard
-                            key={item.id}
-                            item={item}
-                            onCardClick={() => setShowItemDetails(item)}
-                            onRemoveClick={(e) => {
-                                e.stopPropagation();
-                                if (window.confirm(`Вы уверены, что хотите удалить ${item.name}?`)) {
-                                    removeItem(item.id);
-                                }
-                            }}
-                        />
-                    ))}
-                </div>
-                {items.length > 7 && (
-                    <button onClick={() => setShowAll(!showAll)} className="show-more-btn">
-                        {showAll ? "Свернуть" : "Показать ещё"}
-                    </button>
-                )}
-            </section>
+            <h1 className="main-title">
+                Административная панель 
+                <button onClick={handleLogout} className="action-button danger-button logout-button">
+                    <FaSignOutAlt style={{ marginRight: '5px' }} /> Выход
+                </button>
+            </h1>
             
-            {/* Секция Галерея (ОБНОВЛЕННЫЙ ВЫЗОВ) */}
-            <Gallery
-                images={images}
-                currentIndex={carouselIndex}
-                onNext={next}
-                onPrev={prev}
-                onRemove={removeImageFromCarousel} 
-                onEdit={(event) => setShowEventDetails(event)} // НОВОЕ: для открытия модалки редактирования
-                onAddClick={() => setShowNewEventForm(true)}
-            />
+            {/* НОВОЕ: Меню навигации */}
+            <div className="admin-tabs">
+                <button 
+                    className={activeTab === 'pets' ? 'tab-active' : ''} 
+                    onClick={() => setActiveTab('pets')}
+                >
+                    Питомцы
+                </button>
+                <button 
+                    className={activeTab === 'gallery' ? 'tab-active' : ''} 
+                    onClick={() => setActiveTab('gallery')}
+                >
+                    Галерея
+                </button>
+                <button 
+                    className={activeTab === 'settings' ? 'tab-active' : ''} 
+                    onClick={() => setActiveTab('settings')}
+                >
+                    Реквизиты
+                </button>
+                <button 
+                    className={activeTab === 'users' ? 'tab-active' : ''} 
+                    onClick={() => setActiveTab('users')}
+                >
+                    Пользователи
+                </button>
+            </div>
             
-            {/* Секция Контакты */}
-            <Contacts 
-                settings={settings} 
-                setSettings={setSettings} 
-                onSave={saveSettings} 
-            />
+            {/* Рендер контента в зависимости от вкладки */}
+            
+            {/* Вкладка: Питомцы */}
+            {activeTab === 'pets' && (
+                <section>
+                    <h2 className="section-title">Наши питомцы</h2>
+                    <div className="pets-grid">
+                        <AddPetCard onClick={() => setShowNewForm(true)} />
+                        {visibleItems.map((item) => (
+                            <PetCard
+                                key={item.id}
+                                item={item}
+                                onCardClick={() => setShowItemDetails(item)}
+                                onRemoveClick={(e) => {
+                                    e.stopPropagation();
+                                    if (window.confirm(`Вы уверены, что хотите удалить ${item.name}?`)) {
+                                        removeItem(item.id);
+                                    }
+                                }}
+                            />
+                        ))}
+                    </div>
+                    {items.length > 7 && (
+                        <button onClick={() => setShowAll(!showAll)} className="show-more-btn">
+                            {showAll ? "Свернуть" : "Показать ещё"}
+                        </button>
+                    )}
+                </section>
+            )}
 
-            {/* Модальное окно РЕДАКТИРОВАНИЯ ПИТОМЦА */}
-            {showItemDetails && (
+            {/* Вкладка: Галерея */}
+            {activeTab === 'gallery' && (
+                <Gallery
+                    images={images}
+                    currentIndex={carouselIndex}
+                    onNext={next}
+                    onPrev={prev}
+                    onRemove={removeImageFromCarousel} 
+                    onEdit={(event) => setShowEventDetails(event)}
+                    onAddClick={() => setShowNewEventForm(true)}
+                />
+            )}
+            
+            {/* Вкладка: Реквизиты */}
+            {activeTab === 'settings' && (
+                <Contacts 
+                    settings={settings} 
+                    setSettings={setSettings} 
+                    onSave={saveSettings} 
+                />
+            )}
+
+            {/* Вкладка: Пользователи */}
+            {activeTab === 'users' && (
+                <AdminUsers />
+            )}
+            
+            {/* МОДАЛЬНЫЕ ОКНА */}
+            {showItemDetails && activeTab === 'pets' && (
                 <PetDetailsModal
                     item={showItemDetails}
                     onClose={() => setShowItemDetails(null)}
@@ -369,8 +494,7 @@ const App = () => {
                 />
             )}
 
-            {/* Модальное окно ДОБАВЛЕНИЯ ПИТОМЦА */}
-            {showNewForm && (
+            {showNewForm && activeTab === 'pets' && (
                 <AddPetFormModal
                     newItem={newItem}
                     onInputChange={handleItemInput}
@@ -381,8 +505,7 @@ const App = () => {
                 />
             )}
 
-            {/* Модальное окно ДОБАВЛЕНИЯ МЕРОПРИЯТИЯ */}
-            {showNewEventForm && (
+            {showNewEventForm && activeTab === 'gallery' && (
                 <AddEventFormModal
                     newEvent={newEvent}
                     onInputChange={handleNewEventInput}
@@ -393,8 +516,7 @@ const App = () => {
                 />
             )}
             
-            {/* НОВОЕ: Модальное окно РЕДАКТИРОВАНИЯ МЕРОПРИЯТИЯ */}
-            {showEventDetails && (
+            {showEventDetails && activeTab === 'gallery' && (
                 <EventDetailsModal
                     event={showEventDetails}
                     onClose={() => setShowEventDetails(null)}
@@ -402,7 +524,7 @@ const App = () => {
                     onDelete={(id) => {
                         if (window.confirm(`Вы уверены, что хотите удалить мероприятие?`)) {
                             removeEvent(id);
-                            setShowEventDetails(null); // Закрыть модалку после удаления
+                            setShowEventDetails(null);
                         }
                     }}
                 />
@@ -411,7 +533,198 @@ const App = () => {
     );
 };
 
-// --- Дочерние компоненты ---
+// -------------------------------------------------------------------
+// НОВЫЙ КОМПОНЕНТ: LoginForm
+// -------------------------------------------------------------------
+const LoginForm = ({ onLogin }) => {
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+
+    const handleSignin = async () => {
+        setError('');
+        try {
+            const response = await fetch(`${AUTH_API_URL}/signin`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                setError(data.message || 'Ошибка входа. Проверьте логин/пароль.');
+                return;
+            }
+            onLogin(data.accessToken);
+
+        } catch (err) {
+            setError('Не удалось подключиться к серверу.');
+        }
+    };
+    
+
+    return (
+        <div className="login-container">
+            <h2 className="section-title">Вход в панель администратора</h2>
+            <div className="login-form">
+                <input
+                    type="text"
+                    placeholder="Имя пользователя"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="form-input"
+                />
+                <input
+                    type="password"
+                    placeholder="Пароль"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="form-input"
+                />
+                {error && <p className="error-message">{error}</p>}
+                
+                <div className="login-actions">
+                    <button onClick={handleSignin} className="action-button success-button">
+                        Войти
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// -------------------------------------------------------------------
+// НОВЫЙ КОМПОНЕНТ: AdminUsers (Управление пользователями)
+// -------------------------------------------------------------------
+const AdminUsers = () => {
+    const [newUsername, setNewUsername] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [changePassword, setChangePassword] = useState('');
+    const [message, setMessage] = useState('');
+    
+    // Внимание: на бэкенде пока реализован только /api/auth/signup (доступный без токена для первого админа)
+    // В AdminUsers мы должны использовать ЗАЩИЩЕННЫЙ маршрут для создания нового админа.
+    // На бэкенде нужно будет создать отдельный контроллер и маршрут, например: /api/users/create
+    const handleCreateUser = async () => {
+        setMessage('');
+        if (!newUsername || !newPassword) {
+            setMessage("Заполните оба поля для нового пользователя.");
+            return;
+        }
+
+        try {
+            // !!! ВНИМАНИЕ: Здесь нужно будет использовать защищенный маршрут, 
+            // например, POST /api/users/create, когда он будет реализован на бэкенде.
+            // Пока используем /api/auth/signup, но в боевом режиме это опасно.
+            const response = await securedFetch(`${AUTH_API_URL}/signup`, { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: newUsername, password: newPassword }),
+            });
+            
+            if (response && response.ok) {
+                 // Здесь мы должны получить ответ, чтобы узнать имя
+                const data = await response.json(); 
+                setMessage(`Администратор ${data.username} успешно создан.`);
+                setNewUsername('');
+                setNewPassword('');
+            } else if (response) {
+                const data = await response.json();
+                setMessage(data.message || 'Ошибка создания пользователя.');
+            }
+        } catch (err) {
+            setMessage('Ошибка подключения или нет прав доступа.');
+        }
+    };
+    
+    // Внимание: эту функцию нужно будет реализовать на бэкенде (PUT /api/users/change-password)
+    const handleChangePassword = async () => {
+        setMessage('');
+        if (!currentPassword || !changePassword) {
+            setMessage("Заполните поля текущего и нового паролей.");
+            return;
+        }
+
+        try {
+            // !!! НУЖНО РЕАЛИЗОВАТЬ НА БЭКЕНДЕ
+            // const response = await securedFetch(`${BASE_API_URL}/api/users/change-password`, { 
+            //     method: 'PUT',
+            //     headers: { 'Content-Type': 'application/json' },
+            //     body: JSON.stringify({ currentPassword, newPassword: changePassword }),
+            // });
+            
+            // if (response && response.ok) {
+            //     setMessage('Пароль успешно изменен!');
+            //     setCurrentPassword('');
+            //     setChangePassword('');
+            // } else if (response) {
+            //     const data = await response.json();
+            //     setMessage(data.message || 'Ошибка смены пароля.');
+            // }
+            setMessage('Функция смены пароля пока не реализована на бэкенде!');
+        } catch (err) {
+            setMessage('Ошибка подключения.');
+        }
+    };
+
+    return (
+        <section className="form-container user-management-container">
+            <h2 className="section-title">Управление пользователями</h2>
+            {message && <p className="status-message">{message}</p>}
+
+            {/* Блок 1: Создание нового администратора */}
+            <div className="user-action-block">
+                <h3>Создать нового администратора</h3>
+                <input
+                    type="text"
+                    placeholder="Имя пользователя"
+                    value={newUsername}
+                    onChange={(e) => setNewUsername(e.target.value)}
+                    className="form-input"
+                />
+                <input
+                    type="password"
+                    placeholder="Пароль"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="form-input"
+                />
+                <button onClick={handleCreateUser} className="action-button success-button">
+                    <FaPlus /> Создать
+                </button>
+            </div>
+            
+            <hr style={{ margin: '30px 0' }}/>
+            
+            {/* Блок 2: Смена пароля текущего пользователя */}
+            <div className="user-action-block">
+                <h3>Смена пароля</h3>
+                <input
+                    type="password"
+                    placeholder="Текущий пароль"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="form-input"
+                />
+                <input
+                    type="password"
+                    placeholder="Новый пароль"
+                    value={changePassword}
+                    onChange={(e) => setChangePassword(e.target.value)}
+                    className="form-input"
+                />
+                <button onClick={handleChangePassword} className="action-button default-button">
+                    <FaSave /> Сменить пароль
+                </button>
+            </div>
+        </section>
+    );
+};
+
+
+// --- Дочерние компоненты (без изменений) ---
 
 const PetCard = ({ item, onCardClick, onRemoveClick }) => (
     <div className="pet-card" onClick={onCardClick}>
@@ -431,7 +744,6 @@ const AddPetCard = ({ onClick }) => (
     </div>
 );
 
-// --- ОБНОВЛЕННЫЙ КОМПОНЕНТ ГАЛЕРЕИ ---
 const Gallery = ({ images, currentIndex, onNext, onPrev, onRemove, onEdit, onAddClick }) => (
     <section>
         <h2 className="section-title">Галерея мероприятий</h2>
@@ -440,10 +752,8 @@ const Gallery = ({ images, currentIndex, onNext, onPrev, onRemove, onEdit, onAdd
             <div className="gallery-slide">
                 {images.length > 0 ? (
                     <>
-                        {/* ИЗМЕНЕНИЕ: onEdit вызывается при клике на контейнер */}
                         <div className="gallery-img-container" onClick={() => onEdit(images[currentIndex])}>
                             <img src={images[currentIndex].url} alt={images[currentIndex].title} className="gallery-img" />
-                            {/* ИЗМЕНЕНИЕ: иконка корзины (FaTrash) и предотвращение всплытия клика */}
                             <button 
                                 onClick={(e) => {
                                     e.stopPropagation(); 
@@ -475,7 +785,6 @@ const Contacts = ({ settings, setSettings, onSave }) => {
     
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        // name: cardNumber или accountNumber
         setSettings({ ...settings, [name]: value });
     };
 
@@ -515,7 +824,6 @@ const Contacts = ({ settings, setSettings, onSave }) => {
     );
 };
 
-// Модальное окно ДЕТАЛЕЙ ПИТОМЦА (остается без изменений)
 const PetDetailsModal = ({ item, onClose, onSave, onDelete }) => {
     const [editData, setEditData] = useState({ ...item });
     const [newPhotoFile, setNewPhotoFile] = useState(null);
@@ -608,7 +916,6 @@ const PetDetailsModal = ({ item, onClose, onSave, onDelete }) => {
     );
 };
 
-// Модальное окно ДОБАВЛЕНИЯ ПИТОМЦА (остается без изменений)
 const AddPetFormModal = ({ newItem, onInputChange, onImageUpload, onRemovePhoto, onAdd, onClose }) => (
     <div className="modal-overlay">
         <div className="modal-content">
@@ -648,16 +955,11 @@ const AddPetFormModal = ({ newItem, onInputChange, onImageUpload, onRemovePhoto,
     </div>
 );
 
-
-// --- ОБНОВЛЕННЫЙ КОМПОНЕНТ: Модальное окно ДОБАВЛЕНИЯ МЕРОПРИЯТИЯ ---
 const AddEventFormModal = ({ newEvent, onInputChange, onImageUpload, onRemovePhoto, onAdd, onClose }) => (
     <div className="modal-overlay">
       <div className="modal-content">
         <button onClick={onClose} className="remove-btn modal-close-btn"><FaTimes /></button>
         
-        {/* ИЗМЕНЕНИЕ: Убран h3 заголовок */}
-        
-        {/* Загрузка фото */}
         <div className="modal-img-upload-container">
           {newEvent.imageFile ? (
             <>
@@ -673,7 +975,6 @@ const AddEventFormModal = ({ newEvent, onInputChange, onImageUpload, onRemovePho
           {newEvent.imageFile && <p style={{marginTop: '10px'}}>Выбран файл: {newEvent.imageFile.name}</p>}
         </div>
         
-        {/* Поля для данных */}
         <div className="modal-details">
           <input name="title" placeholder="Заголовок мероприятия" value={newEvent.title} onChange={onInputChange} className="form-input" />
           <textarea name="description" placeholder="Описание мероприятия" value={newEvent.description} onChange={onInputChange} className="form-textarea" rows="3" />
@@ -683,7 +984,6 @@ const AddEventFormModal = ({ newEvent, onInputChange, onImageUpload, onRemovePho
     </div>
 );
 
-// --- НОВЫЙ КОМПОНЕНТ: Модальное окно РЕДАКТИРОВАНИЯ МЕРОПРИЯТИЯ ---
 const EventDetailsModal = ({ event, onClose, onSave, onDelete }) => {
     const [editData, setEditData] = useState({ title: event.title, description: event.description });
     const [newPhotoFile, setNewPhotoFile] = useState(null);
