@@ -11,7 +11,7 @@ const SETTINGS_API_URL = `${BASE_API_URL}/api/settings`;
 const AUTH_API_URL = `${BASE_API_URL}/api/auth`;
 
 // -------------------------------------------------------------------
-// НОВОЕ: Вспомогательная функция для защищенных запросов (с токеном)
+// Вспомогательная функция для защищенных запросов (с токеном)
 // -------------------------------------------------------------------
 const securedFetch = async (url, options = {}) => {
     const token = localStorage.getItem("accessToken");
@@ -76,7 +76,7 @@ const App = () => {
     });
     
     // -------------------------------------------------------------------
-    // НОВОЕ: ФУНКЦИИ АУТЕНТИФИКАЦИИ
+    // ФУНКЦИИ АУТЕНТИФИКАЦИИ
     // -------------------------------------------------------------------
     
     // Проверка токена при загрузке
@@ -534,7 +534,7 @@ const App = () => {
 };
 
 // -------------------------------------------------------------------
-// НОВЫЙ КОМПОНЕНТ: LoginForm
+// LoginForm
 // -------------------------------------------------------------------
 const LoginForm = ({ onLogin }) => {
     const [username, setUsername] = useState('');
@@ -595,7 +595,7 @@ const LoginForm = ({ onLogin }) => {
 };
 
 // -------------------------------------------------------------------
-// НОВЫЙ КОМПОНЕНТ: AdminUsers (Управление пользователями)
+// AdminUsers (Управление пользователями)
 // -------------------------------------------------------------------
 const AdminUsers = () => {
     const [newUsername, setNewUsername] = useState('');
@@ -604,9 +604,7 @@ const AdminUsers = () => {
     const [changePassword, setChangePassword] = useState('');
     const [message, setMessage] = useState('');
     
-    // Внимание: на бэкенде пока реализован только /api/auth/signup (доступный без токена для первого админа)
-    // В AdminUsers мы должны использовать ЗАЩИЩЕННЫЙ маршрут для создания нового админа.
-    // На бэкенде нужно будет создать отдельный контроллер и маршрут, например: /api/users/create
+    // 1. Создание нового администратора
     const handleCreateUser = async () => {
         setMessage('');
         if (!newUsername || !newPassword) {
@@ -615,23 +613,20 @@ const AdminUsers = () => {
         }
 
         try {
-            // !!! ВНИМАНИЕ: Здесь нужно будет использовать защищенный маршрут, 
-            // например, POST /api/users/create, когда он будет реализован на бэкенде.
-            // Пока используем /api/auth/signup, но в боевом режиме это опасно.
+            // Используем защищенный POST запрос
             const response = await securedFetch(`${AUTH_API_URL}/signup`, { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username: newUsername, password: newPassword }),
             });
             
-            if (response && response.ok) {
-                 // Здесь мы должны получить ответ, чтобы узнать имя
-                const data = await response.json(); 
+            const data = await response.json();
+
+            if (response.ok) {
                 setMessage(`Администратор ${data.username} успешно создан.`);
                 setNewUsername('');
                 setNewPassword('');
-            } else if (response) {
-                const data = await response.json();
+            } else {
                 setMessage(data.message || 'Ошибка создания пользователя.');
             }
         } catch (err) {
@@ -639,7 +634,7 @@ const AdminUsers = () => {
         }
     };
     
-    // Внимание: эту функцию нужно будет реализовать на бэкенде (PUT /api/users/change-password)
+    // 2. Смена пароля текущего пользователя
     const handleChangePassword = async () => {
         setMessage('');
         if (!currentPassword || !changePassword) {
@@ -648,27 +643,30 @@ const AdminUsers = () => {
         }
 
         try {
-            // !!! НУЖНО РЕАЛИЗОВАТЬ НА БЭКЕНДЕ
-            // const response = await securedFetch(`${BASE_API_URL}/api/users/change-password`, { 
-            //     method: 'PUT',
-            //     headers: { 'Content-Type': 'application/json' },
-            //     body: JSON.stringify({ currentPassword, newPassword: changePassword }),
-            // });
+            // Используем защищенный PUT запрос
+            const response = await securedFetch(`${AUTH_API_URL}/change-password`, { 
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    currentPassword: currentPassword, 
+                    newPassword: changePassword 
+                }),
+            });
             
-            // if (response && response.ok) {
-            //     setMessage('Пароль успешно изменен!');
-            //     setCurrentPassword('');
-            //     setChangePassword('');
-            // } else if (response) {
-            //     const data = await response.json();
-            //     setMessage(data.message || 'Ошибка смены пароля.');
-            // }
-            setMessage('Функция смены пароля пока не реализована на бэкенде!');
+            const data = await response.json();
+
+            if (response.ok) {
+                setMessage('Пароль успешно изменен!');
+                setCurrentPassword('');
+                setChangePassword('');
+            } else {
+                setMessage(data.message || 'Ошибка смены пароля (возможно, неверный старый пароль).');
+            }
         } catch (err) {
             setMessage('Ошибка подключения.');
         }
     };
-
+    
     return (
         <section className="form-container user-management-container">
             <h2 className="section-title">Управление пользователями</h2>
