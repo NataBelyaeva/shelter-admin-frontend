@@ -45,6 +45,7 @@ const App = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoading, setIsLoading] = useState(true); 
     const [activeTab, setActiveTab] = useState('pets'); // 'pets', 'gallery', 'settings', 'users'
+    const [searchTerm, setSearchTerm] = useState(""); // Состояние для строки поиска
 
     // --- Состояние для питомцев ---
     const [items, setItems] = useState([]);
@@ -112,18 +113,27 @@ const App = () => {
     // ====================================================================
 
     // 1. (Read) Загрузка питомцев (ОСТАВЛЯЕМ БЕЗ ЗАЩИТЫ)
-    const loadPets = () => {
-        fetch(PETS_API_URL)
+    const loadPets = (search = "") => {
+        // Формируем URL: если есть поиск, добавляем query-параметр name
+        const url = search 
+            ? `${PETS_API_URL}?name=${encodeURIComponent(search)}` 
+            : PETS_API_URL;
+    
+        fetch(url)
             .then(response => response.json())
             .then(data => {
                 const petsWithFullPhotoPath = data.map(pet => ({
                     ...pet,
                     photo: pet.photo ? `${BASE_API_URL}${pet.photo}` : 'https://placedog.net/300/200' 
                 }));
-                setItems(petsWithFullPhotoPath.reverse());
+                setItems(petsWithFullPhotoPath);
             })
             .catch(error => console.error("Ошибка при загрузке питомцев:", error));
     };
+
+    useEffect(() => {
+        loadPets(searchTerm);
+    }, [searchTerm]);
     
     // 2. (Create) Добавление нового питомца (ИСПОЛЬЗУЕМ securedFetch)
     const addItem = async () => {
@@ -429,8 +439,20 @@ const App = () => {
             {activeTab === 'pets' && (
                 <section>
                     <h2 className="section-title">Наши питомцы</h2>
-                    <div className="pets-grid">
-                        <AddPetCard onClick={() => setShowNewForm(true)} />
+                    
+                    {/* НОВОЕ: Поле поиска */}
+                    <div className="search-container" style={{ marginBottom: '20px' }}>
+                        <input
+                            type="text"
+                            placeholder="Поиск питомца по имени..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="form-input"
+                            style={{ maxWidth: '400px' }}
+                        />
+                    </div>
+            <div className="pets-grid">
+            <AddPetCard onClick={() => setShowNewForm(true)} />
                         {visibleItems.map((item) => (
                             <PetCard
                                 key={item.id}
