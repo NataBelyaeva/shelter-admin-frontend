@@ -78,46 +78,16 @@ section {
 .success-button {
   background-color: #10b981;
   color: white;
-  
-  @media (min-width: 768px) {
-    font-size: 1.1vw;
-  margin: 0 0 1vw 0;
-  }
-  @media (max-width: 767px) {
-    margin: 0 0 2vw 0;
-    font-size: 3.8vw;
-    width: 100%;
-  }
 }
 
 .danger-button {
-  /* НОВОЕ: Красный фон для кнопок "Удалить" */
-  background-color: #dc2626; 
+  background-color: #dc2626;
   color: white;
-  
-  @media (min-width: 768px) {
-    font-size: 1.1vw;
-  }
-  @media (max-width: 767px) {
-    font-size: 3.8vw;
-    width: 100%;
-  }
 }
 
 .danger-button-exit {
-  /* НОВОЕ: Красный фон для кнопок "Удалить" */
-  background-color: #dc2626; 
+  background-color: #dc2626;
   color: white;
-  
-  @media (min-width: 768px) {
-    font-size: 1.1vw;
-  }
-  @media (max-width: 767px) {
-    font-size: 3.8vw;
-    /* width: 100%; */
-    /* position: absolute; */
-    
-  }
 }
 
 .show-more-btn {
@@ -253,9 +223,6 @@ section {
 
 .gallery-description {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
 }
 
 .gallery-description h3 {
@@ -265,19 +232,6 @@ section {
 .gallery-description p {
   color: #6b7280;
   white-space: pre-wrap;
-}
-
-.gallery-text-container {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-}
-
-.gallery-text {
-  color: #6b7280;
-  white-space: pre-wrap;
-  margin: 0 0 15px 0;
-  flex: 1;
 }
 
 .gallery-empty {
@@ -332,13 +286,11 @@ section {
   display: flex;
   background-color: #fff;
   width: 90%;
-  max-width: 1000px;
-  height: 85vh;
-  max-height: 85vh;
+  max-width: 900px;
+  max-height: 600px;
   border-radius: 12px;
   position: relative;
   overflow: hidden;
-  margin: 20px auto;
 }
 
 .modal-close-btn {
@@ -351,7 +303,6 @@ section {
   height: 100%;
   position: relative;
   background-color: #f3f4f6;
-  overflow: hidden;
 }
 
 .modal-img-upload-container {
@@ -359,7 +310,6 @@ section {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
 }
 
 .image-upload-input {
@@ -381,53 +331,12 @@ section {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center;
 }
 
 .modal-details {
   padding: 30px 40px;
   width: 50%;
   overflow-y: auto;
-  height: 100%;
-}
-
-@media (max-width: 800px) {
-  .modal-content {
-    height: 90vh;
-    max-height: 90vh;
-    margin: 10px;
-    width: calc(100% - 20px);
-  }
-  
-  .modal-img-container, .modal-img-upload-container {
-    width: 100%;
-    height: 40%;
-    min-height: 200px;
-  }
-  
-  .modal-details {
-    width: 100%;
-    height: 60%;
-    padding: 20px;
-  }
-}
-
-@media (max-width: 600px) {
-  .modal-content {
-    height: 95vh;
-    max-height: 95vh;
-    margin: 5px;
-    width: calc(100% - 10px);
-  }
-  
-  .modal-img-container, .modal-img-upload-container {
-    height: 35%;
-  }
-  
-  .modal-details {
-    height: 65%;
-    padding: 15px;
-  }
 }
 
 .modal-details p {
@@ -440,27 +349,11 @@ section {
   align-items: center;
   padding-top: 20px;
   border-top: 1px solid #e5e7eb;
-  gap: 0px;
-  @media (min-width: 768px) {
-    width: 20vw;
-  }
-
+  gap: 10px;
 }
 
 .file-upload-button {
   cursor: pointer;
-  
-@media (min-width: 768px) {
-    margin: 0 0 1vw 0;
-  font-size: 1.1vw;
-  }
-  @media (max-width: 767px) {
-    margin: 0 0 2vw 0;
-    font-size: 3.8vw;
-    width: 100%;
-    text-align: center;
-  }
-
 }
 
 .pet-options, .checkbox-group, .radio-group {
@@ -584,16 +477,14 @@ section {
   color: white;
   cursor: pointer;
   transition: background-color 0.2s;
-  padding: 8px 16px;
+  padding: 6px 12px;
+  margin-top: 10px;
   display: inline-block;
-  align-self: flex-start;
-  margin-top: auto;
-  font-size: 0.9rem;
 }
 
-/* .read-more-btn:hover {
+.read-more-btn:hover {
   background-color: #2563eb;
-} */
+}
 
 /* --- Full Text Modal --- */
 .full-text-modal-content {
@@ -753,7 +644,6 @@ section {
     display: block;
     margin: 10px auto 0;
     text-align: center;
-    
   }
   
   .form-input, .form-textarea {

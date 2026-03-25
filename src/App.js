@@ -782,7 +782,11 @@ const Gallery = ({ images, currentIndex, onNext, onPrev, onRemove, onEdit, onAdd
 
     return (
         <section>
+            
             <h2 className="section-title">Галерея мероприятий</h2>
+            <button onClick={onAddClick} className="action-button success-button" style={{ marginTop: '20px' }}>
+                <FaPlus style={{ marginRight: '5px' }}/> Добавить мероприятие
+            </button>
             <div className="gallery">
                 <button onClick={onPrev} className="gallery-arrow" disabled={images.length <= 1}>
                     <FaArrowLeft size={24} />
@@ -804,19 +808,21 @@ const Gallery = ({ images, currentIndex, onNext, onPrev, onRemove, onEdit, onAdd
                                 
                             </div>
                             <div className="gallery-description">
-                                <h3>{images[currentIndex].title}</h3>
-                                <p>
-                                    {truncateText(images[currentIndex].description)}
-                                    {images[currentIndex].description && images[currentIndex].description.length > 100 && (
-                                        <button 
-                                            onClick={() => handleReadMore(images[currentIndex])}
-                                            className="read-more-btn"
-                                        >
-                                            Читать полностью
-                                        </button>
-                                    )}
-                                </p>
-                            </div>
+    <h3>{images[currentIndex].title}</h3>
+    <div className="gallery-text-container">
+        <p className="gallery-text">
+            {truncateText(images[currentIndex].description)}
+        </p>
+        {images[currentIndex].description && images[currentIndex].description.length > 100 && (
+            <button 
+                onClick={() => handleReadMore(images[currentIndex])}
+                className="read-more-btn"
+            >
+                Читать полностью
+            </button>
+        )}
+    </div>
+</div>
                         </>
                     ) : (
                         <div className="gallery-empty">Галерея пуста</div>
@@ -826,9 +832,7 @@ const Gallery = ({ images, currentIndex, onNext, onPrev, onRemove, onEdit, onAdd
                     <FaArrowRight size={24} />
                 </button>
             </div>
-            <button onClick={onAddClick} className="action-button success-button" style={{ marginTop: '20px' }}>
-                <FaPlus style={{ marginRight: '5px' }}/> Добавить мероприятие
-            </button>
+            
 
             {/* Модальное окно для полного текста */}
             {showFullTextModal && selectedEvent && (
@@ -960,7 +964,7 @@ const PetDetailsModal = ({ item, onClose, onSave, onDelete }) => {
                     <textarea name="health" value={editData.health || ''} onChange={handleInputChange} className="form-textarea" />
                     
                     <label><p>Описание характера питомца:</p></label>
-                    <input name="description" value={editData.description} onChange={handleInputChange} className="form-input" />
+                    <textarea name="description" value={editData.description} onChange={handleInputChange} className="form-input" />
 
                     <div className="checkbox-group">
                         <label><input type="checkbox" name="sterilized" checked={editData.sterilized} onChange={handleInputChange} /> Стерилизован</label>
