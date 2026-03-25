@@ -400,7 +400,7 @@ const App = () => {
         <div className="container">
             <h1 className="main-title">
                 Административная панель 
-                <button onClick={handleLogout} className="action-button danger-button logout-button">
+                <button onClick={handleLogout} className="action-button-exit danger-button-exit logout-button">
                     <FaSignOutAlt style={{ marginRight: '5px' }} /> Выход
                 </button>
             </h1>
@@ -417,7 +417,7 @@ const App = () => {
                     className={activeTab === 'gallery' ? 'tab-active' : ''} 
                     onClick={() => setActiveTab('gallery')}
                 >
-                    Галерея
+                    Мероприятия
                 </button>
                 <button 
                     className={activeTab === 'settings' ? 'tab-active' : ''} 
@@ -764,42 +764,102 @@ const AddPetCard = ({ onClick }) => (
     </div>
 );
 
-const Gallery = ({ images, currentIndex, onNext, onPrev, onRemove, onEdit, onAddClick }) => (
-    <section>
-        <h2 className="section-title">Галерея мероприятий</h2>
-        <div className="gallery">
-            <button onClick={onPrev} className="gallery-arrow" disabled={images.length <= 1}><FaArrowLeft size={24} /></button>
-            <div className="gallery-slide">
-                {images.length > 0 ? (
-                    <>
-                        <div className="gallery-img-container" onClick={() => onEdit(images[currentIndex])}>
-                            <img src={images[currentIndex].url} alt={images[currentIndex].title} className="gallery-img" />
-                            <button 
-                                onClick={(e) => {
-                                    e.stopPropagation(); 
-                                    onRemove(currentIndex);
-                                }} 
-                                className="remove-btn gallery-remove-btn"
-                            >
-                                <FaTrash />
-                            </button>
-                        </div>
-                        <div className="gallery-description">
-                            <h3>{images[currentIndex].title}</h3>
-                            <p>{images[currentIndex].description}</p>
-                        </div>
-                    </>
-                ) : (
-                    <div className="gallery-empty">Галерея пуста</div>
-                )}
+// Замените существующий компонент Gallery на этот
+const Gallery = ({ images, currentIndex, onNext, onPrev, onRemove, onEdit, onAddClick }) => {
+    const [showFullTextModal, setShowFullTextModal] = useState(false);
+    const [selectedEvent, setSelectedEvent] = useState(null);
+
+    const truncateText = (text, maxLength = 100) => {
+        if (!text) return '';
+        if (text.length <= maxLength) return text;
+        return text.substring(0, maxLength) + '...';
+    };
+
+    const handleReadMore = (event) => {
+        setSelectedEvent(event);
+        setShowFullTextModal(true);
+    };
+
+    return (
+        <section>
+            <h2 className="section-title">Галерея мероприятий</h2>
+            <div className="gallery">
+                <button onClick={onPrev} className="gallery-arrow" disabled={images.length <= 1}>
+                    <FaArrowLeft size={24} />
+                </button>
+                <div className="gallery-slide">
+                    <button 
+                                    onClick={(e) => {
+                                        e.stopPropagation(); 
+                                        onRemove(currentIndex);
+                                    }} 
+                                    className="remove-btn gallery-remove-btn"
+                                >
+                                    <FaTrash />
+                                </button>
+                    {images.length > 0 ? (
+                        <>
+                            <div className="gallery-img-container" onClick={() => onEdit(images[currentIndex])}>
+                                <img src={images[currentIndex].url} alt={images[currentIndex].title} className="gallery-img" />
+                                
+                            </div>
+                            <div className="gallery-description">
+                                <h3>{images[currentIndex].title}</h3>
+                                <p>
+                                    {truncateText(images[currentIndex].description)}
+                                    {images[currentIndex].description && images[currentIndex].description.length > 100 && (
+                                        <button 
+                                            onClick={() => handleReadMore(images[currentIndex])}
+                                            className="read-more-btn"
+                                        >
+                                            Читать полностью
+                                        </button>
+                                    )}
+                                </p>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="gallery-empty">Галерея пуста</div>
+                    )}
+                </div>
+                <button onClick={onNext} className="gallery-arrow" disabled={images.length <= 1}>
+                    <FaArrowRight size={24} />
+                </button>
             </div>
-            <button onClick={onNext} className="gallery-arrow" disabled={images.length <= 1}><FaArrowRight size={24} /></button>
+            <button onClick={onAddClick} className="action-button success-button" style={{ marginTop: '20px' }}>
+                <FaPlus style={{ marginRight: '5px' }}/> Добавить мероприятие
+            </button>
+
+            {/* Модальное окно для полного текста */}
+            {showFullTextModal && selectedEvent && (
+                <FullTextModal
+                    event={selectedEvent}
+                    onClose={() => setShowFullTextModal(false)}
+                />
+            )}
+        </section>
+    );
+};
+
+// Добавьте этот компонент после компонента Gallery
+const FullTextModal = ({ event, onClose }) => {
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="full-text-modal-content" onClick={(e) => e.stopPropagation()}>
+                <button onClick={onClose} className="remove-btn modal-close-btn">
+                    <FaTimes />
+                </button>
+                <h3>{event.title}</h3>
+                <div className="full-text-modal-image">
+                    <img src={event.url} alt={event.title} />
+                </div>
+                <div className="full-text-modal-description">
+                    <p>{event.description}</p>
+                </div>
+            </div>
         </div>
-        <button onClick={onAddClick} className="action-button success-button" style={{ marginTop: '20px' }}>
-            <FaPlus style={{ marginRight: '5px' }}/> Добавить мероприятие
-        </button>
-    </section>
-);
+    );
+};
 
 const Contacts = ({ settings, setSettings, onSave }) => {
     
@@ -884,23 +944,23 @@ const PetDetailsModal = ({ item, onClose, onSave, onDelete }) => {
                 </div>
                 
                 <div className="modal-details">
-                    <label>Имя:</label>
+                    <label> <p>Имя:</p></label>
                     <input name="name" value={editData.name} onChange={handleInputChange} className="form-input" />
                     
-                    <label>Пол:</label>
+                    <label><p>Пол:</p></label>
                     <div className="radio-group">
                         <label><input type="radio" name="gender" value="Мальчик" checked={editData.gender === "Мальчик"} onChange={handleInputChange} /> Мальчик</label>
                         <label><input type="radio" name="gender" value="Девочка" checked={editData.gender === "Девочка"} onChange={handleInputChange} /> Девочка</label>
                     </div>
 
-                    <label>Возраст:</label>
+                    <label><p>Возраст:</p></label>
                     <input name="age" value={editData.age} onChange={handleInputChange} className="form-input" />
                     
-                    <label>Состояние здоровья:</label>
-                    <input name="description" value={editData.description} onChange={handleInputChange} className="form-input" />
-                    
-                    <label>Описание характера питомца:</label>
+                    <label><p>Состояние здоровья:</p></label>
                     <textarea name="health" value={editData.health || ''} onChange={handleInputChange} className="form-textarea" />
+                    
+                    <label><p>Описание характера питомца:</p></label>
+                    <input name="description" value={editData.description} onChange={handleInputChange} className="form-input" />
 
                     <div className="checkbox-group">
                         <label><input type="checkbox" name="sterilized" checked={editData.sterilized} onChange={handleInputChange} /> Стерилизован</label>
@@ -909,7 +969,7 @@ const PetDetailsModal = ({ item, onClose, onSave, onDelete }) => {
 
                     <div className="modal-actions">
 
-                        <div style={{marginBottom: '2em', marginTop: '2em'}}>
+                        
                             <label htmlFor="photo-upload-edit" className="action-button default-button file-upload-button">
                                 {newPhotoFile ? `Фото: ${newPhotoFile.name}` : 'Изменить фото'}
                                 <input 
@@ -920,14 +980,14 @@ const PetDetailsModal = ({ item, onClose, onSave, onDelete }) => {
                                     style={{ display: 'none'}} 
                                 />
                             </label>
-                        </div>
+                        
 
-                        <button onClick={handleSaveClick} className="action-button success-button" style={{marginRight: '1em'}}>
-                            Сохранить
+                        <button onClick={handleSaveClick} className="action-button success-button" >
+                            Сохранить карточку
                         </button>
                         
                         <button onClick={onDelete} className="action-button danger-button">
-                            Удалить
+                            Удалить карточку
                         </button>
                     </div>
                 </div>
@@ -963,8 +1023,8 @@ const AddPetFormModal = ({ newItem, onInputChange, onImageUpload, onRemovePhoto,
                     <label><input type="radio" name="gender" value="Девочка" checked={newItem.gender === "Девочка"} onChange={onInputChange} /> Девочка</label>
                 </div>
                 <input name="age" placeholder="Возраст (например, 2 года)" value={newItem.age} onChange={onInputChange} className="form-input" />
-                <input name="description" placeholder="Состояние здоровья" value={newItem.description} onChange={onInputChange} className="form-input" />
-                <textarea name="health" placeholder="Главная черта характера" value={newItem.health} onChange={onInputChange} className="form-textarea" />
+                <input name="health" placeholder="Состояние здоровья" value={newItem.health} onChange={onInputChange} className="form-input" />
+                <textarea name="description" placeholder="Главная черта характера" value={newItem.description} onChange={onInputChange} className="form-textarea" />
                 <div className="checkbox-group">
                     <label><input type="checkbox" name="sterilized" checked={newItem.sterilized} onChange={onInputChange} /> Стерилизован</label>
                     <label><input type="checkbox" name="tray" checked={newItem.tray} onChange={onInputChange} /> Приучен к лотку</label>
