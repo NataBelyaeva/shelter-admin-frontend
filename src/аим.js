@@ -78,16 +78,46 @@ section {
 .success-button {
   background-color: #10b981;
   color: white;
+  
+  @media (min-width: 768px) {
+    font-size: 1.1vw;
+  margin: 0 0 1vw 0;
+  }
+  @media (max-width: 767px) {
+    margin: 0 0 2vw 0;
+    font-size: 3.8vw;
+    width: 100%;
+  }
 }
 
 .danger-button {
-  background-color: #dc2626;
+  /* НОВОЕ: Красный фон для кнопок "Удалить" */
+  background-color: #dc2626; 
   color: white;
+  
+  @media (min-width: 768px) {
+    font-size: 1.1vw;
+  }
+  @media (max-width: 767px) {
+    font-size: 3.8vw;
+    width: 100%;
+  }
 }
 
 .danger-button-exit {
-  background-color: #dc2626;
+  /* НОВОЕ: Красный фон для кнопок "Удалить" */
+  background-color: #dc2626; 
   color: white;
+  
+  @media (min-width: 768px) {
+    font-size: 1.1vw;
+  }
+  @media (max-width: 767px) {
+    font-size: 3.8vw;
+    /* width: 100%; */
+    /* position: absolute; */
+    
+  }
 }
 
 .show-more-btn {
@@ -354,6 +384,19 @@ section {
 
 .file-upload-button {
   cursor: pointer;
+  
+@media (min-width: 768px) {
+    margin: 0 0 1vw 0;
+  font-size: 1.1vw;
+  }
+  @media (max-width: 767px) {
+    margin: 0 0 2vw 0;
+    font-size: 3.8vw;
+    width: 100%;
+     /* display: block; Добавьте это */
+    text-align: center;
+  }
+
 }
 
 .pet-options, .checkbox-group, .radio-group {
