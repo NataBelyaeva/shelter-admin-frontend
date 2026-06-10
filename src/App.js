@@ -4,7 +4,7 @@ import { FaTimes, FaPlus, FaArrowLeft, FaArrowRight, FaTrash, FaSave, FaSignOutA
 import "./App.css";
 
 // --- API Configuration ---
-const BASE_API_URL = 'https://shelter-backend-anh0xr50u-shelter-s-projects.vercel.app/';
+const BASE_API_URL = 'https://shelter-backend-anh0xr50u-shelter-s-projects.vercel.app';
 const PETS_API_URL = `${BASE_API_URL}/api/pets`;
 const EVENTS_API_URL = `${BASE_API_URL}/api/events`;
 const SETTINGS_API_URL = `${BASE_API_URL}/api/settings`;
